@@ -5,7 +5,7 @@ use Test;
 
 my $lib;
 
-BEGIN { $lib=q{/Users/imel/gitdev/donalgrant/equations/lib} }
+BEGIN { $lib=q{/Users/imel/gitdev/donalgrant/p6-equations/lib} }
 
 use lib $lib;
 use-ok 'Board';

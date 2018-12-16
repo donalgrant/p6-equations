@@ -2,7 +2,7 @@ use v6;
 
 use Algorithm::Combinatorics:from<Perl5> qw<tuples combinations permutations>;
 
-use lib '/Users/imel/gitdev/donalgrant/equations/lib';
+use lib '/Users/imel/gitdev/donalgrant/p6-equations/lib';
 use Globals;
 use RPN;
 

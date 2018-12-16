@@ -1,7 +1,6 @@
 use v6;
 
 use Test;
-# use lib '/Users/imel/gitdev/donalgrant/equations/lib';
 use Globals;
 
 class RPN {

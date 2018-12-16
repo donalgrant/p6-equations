@@ -4,7 +4,7 @@ use v6;
 
 my $lib;
 
-BEGIN { $lib=q{/Users/imel/gitdev/donalgrant/equations/lib} }
+BEGIN { $lib=q{/Users/imel/gitdev/donalgrant/p6-equations/lib} }
 
 use Test;
 use lib $lib;
