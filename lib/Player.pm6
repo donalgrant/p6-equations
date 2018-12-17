@@ -5,11 +5,11 @@ use lib '/Users/imel/gitdev/donalgrant/p6-equations/lib';
 use Globals;
 
 class Player {
-
+    
   use RPN;
   use Board;
   
-  sub choose_goal(Board $board, Int $max_digits=3) {
+  method choose_goal(Board $board, Int $max_digits=3) {
     my Board $B;  # empty board, will be replaced
     # look for constructibility for each goal option
     for shuffle($board.goal_options($max_digits)) -> $g {  
@@ -25,52 +25,47 @@ class Player {
     return $B.goal();
   }
 
-  sub manual {
-    my $self=shift;
-    my $B=shift;
-    my $bonus_taken=shift() // 0;
+  method manual(Board $B, $bonus_taken=False) {
+
     my ($move,$section);
 
-    say $B->display();
-    do { print "Cube:  "; $move=<STDIN>;  chomp $move } until $B->unused()->n($move);
-    do { print "To (R(equired) P(ermitted) F(orbidden) B(onus) E(quation):  "; $section=<STDIN>; chomp $section }
-    until $section=~/^(R|P|F|E|B)/i;
+    put $B.display();
+    do { $move    = prompt "Cube:  " } until $B->unused().n($move);
+    do { $section = prompt "To (R(equired) P(ermitted) F(orbidden) B(onus) E(quation):  " }
+      until $section~~i:/^[RPFEB]/;
 
-    given ($section) {
-      when (/^R/i) {  $B->move_to_required($move) }
-      when (/^P/i) { $B->move_to_permitted($move) }
-      when (/^F/i) { $B->move_to_forbidden($move) }
-      when (/^B/i) { 
-	do { ::msg "Only one bonus per turn"; return $self->manual($B,$bonus_taken) } if $bonus_taken;
-	$B->move_to_forbidden($move);
-	return $self->manual($B,1);
+    given ($section.uc) {
+      when ('R') {  $B.move_to_required($move) }
+      when ('P') { $B.move_to_permitted($move) }
+      when ('F') { $B.move_to_forbidden($move) }
+      when ('B') { 
+	do { say "Only one bonus per turn"; return self.manual($B,$bonus_taken) } if $bonus_taken;
+	$B.move_to_forbidden($move);
+	return $self.manual($B,True);
       }
-      when (/^E/i) { 
-	my $must_use=$B->required()->add($move);
-	my $now_avail=$B->permitted()->add($must_use);
-	print "Enter Equation in either AOS or RPN form; use '?' to escape:  ";
+      when ('E') { 
+	my $must_use=$B.required.add($move);
+	my $now_avail=$B.permitted.add($must_use);
+	my $eq_in = prompt "Enter Equation in either AOS or RPN form; use '?' to escape:  ";
 	my $rpn;
-	my $eq_in=<STDIN>;   chomp $eq_in;  
-	if    (RPN::valid_rpn($eq_in)) { $rpn=RPN->new($eq_in) }
-	elsif (RPN::valid_aos($eq_in)) { $rpn=RPN->new_from_aos($eq_in) }
-	else                           { return $self->manual($B,$bonus_taken) }
-	my $rpn_cubes=Bag->new($rpn->list());
-	my $result=$rpn->value();  # need to validate RPN here
-	do { ::msg "Your RPN=$result, which is not the goal!";      return $self->manual($B,$bonus_taken) }
-	unless $result==$B->goal();
-	do { ::msg "Your RPN does not use all the required cubes!"; return $self->manual($B,$bonus_taken) } 
-	unless $rpn_cubes->contains($must_use);
-	do { ::msg "Not enough cubes to make your RPN!";            return $self->manual($B,$bonus_taken) } 
-	unless $now_avail->contains($rpn_cubes);
-	::msg "You win!  Congratulations!";  return 0;
+	if    (valid_rpn($eq_in)) { $rpn=RPN.new($eq_in) }
+	elsif (valid_aos($eq_in)) { $rpn=RPN.new_from_aos($eq_in) }
+	else                      { return self.manual($B,$bonus_taken) }
+	my $rpn_cubes=Bag.new($rpn.list);
+	my $result = +$rpn;  # need to validate RPN here
+	do { say "Your RPN=$result, which is not the goal!";      return $self->manual($B,$bonus_taken) }
+	unless $result==$B.goal;
+	do { say "Your RPN does not use all the required cubes!"; return $self->manual($B,$bonus_taken) } 
+	unless $rpn_cubes.contains($must_use);
+	do { say "Not enough cubes to make your RPN!";            return $self->manual($B,$bonus_taken) } 
+	unless $now_avail.contains($rpn_cubes);
+	say "You win!  Congratulations!";  return Nil;
       }
     }
-    return $self; 
+    self; 
   }
 
-  sub computed {
-    my $self=shift;
-    my $B=shift;
+  sub computed(Board $B, $max_cubes) {
     my $nr=$B->required()->n();
     my $max_cubes=shift() // ::max($nr+(1-($nr%2)),3);
     
