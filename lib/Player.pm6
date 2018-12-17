@@ -30,7 +30,7 @@ class Player {
     my ($move,$section);
 
     put $B.display();
-    do { $move    = prompt "Cube:  " } until $B->unused().n($move);
+    do { $move    = prompt "Cube:  " } until $B->unused().total($move);
     do { $section = prompt "To (R(equired) P(ermitted) F(orbidden) B(onus) E(quation):  " }
       until $section~~i:/^[RPFEB]/;
 
@@ -65,9 +65,9 @@ class Player {
     self; 
   }
 
-  sub computed(Board $B, $max_cubes) {
-    my $nr=$B->required()->n();
-    my $max_cubes=shift() // ::max($nr+(1-($nr%2)),3);
+  sub computed(Board $B, $max_cubes?) {
+    my $nr=$B.required.total;
+    $max_cubes //= max($nr+(1-($nr%2)),3);
     
     # need to work out bonus move for computer, triggered when forbidden move is available
     # and number of unused cubes on board module number of players is not 1.
@@ -77,24 +77,24 @@ class Player {
     # to go out.  Maybe only need to do this in the scenario where haven't got a "required" move.
     
     # current solutions still valid?
-    my $Go_Out_Cubes=$B->required()->add($B->permitted());  # + one from the board 
+    my $Go_Out_Cubes=$B.required.add($B.permitted);  # + one from the board 
     loop:  
-    my $solutions=$B->solution_list();
-    $solutions=Board::filter_solutions_required($solutions,$B->required());
-    for ($B->unused()->set()) {
-      my $go_out=Board::filter_solutions_usable($solutions,$Go_Out_Cubes->copy()->add($_));
-      if (scalar @$go_out) {
-	say "I win!  I can go out with solution(s):\n",join("\n",map { $_->aos() } @$go_out);
-	return 0;
+    my @solutions=$B.solution_list;
+    @solutions=filter_solutions_required(@solutions,$B.required);
+    for ($B.unused.set) {
+      my @go_out=filter_solutions_usable(@solutions,$Go_Out_Cubes (+) $_.Bag);
+      if (@go_out.elems>0) {
+	say "I win!  I can go out with solution(s):\n{@go_out.map({$_.aos}).join("\n")}";
+	return Nil;
       }
     }
-    $solutions=Board::filter_solutions_usable($solutions,$B->available());
-    if (scalar @$solutions) {  # solution still exists; find required or irrelevant cubes
-      if (rand()<0.1) {  # do something crazy about 10% of the time
-      	  $B->move_to_forbidden($B->unused()->random_item());
-	  return $self;
-	 }
-      my $keep=new Bag ();  # keep is all the cubes used in solutions -- don't forbid these
+    @solutions=filter_solutions_usable(@solutions,$B.available);
+    if (@solutions) {  # solution still exists; find required or irrelevant cubes
+      if ( (^100).pick < 10) {  # do something crazy about 10% of the time
+      	  $B.move_to_forbidden($B.unused.random_item);
+	  return self;
+      }	 
+      my Bag $keep;  # keep is all the cubes used in solutions -- don't forbid these
       for (@$solutions) { $keep->union($_->list()) }  # each $_ is now an RPN object
       # try to put cube in required for shortest solution
       #    my ($shortest_rpn) = sort { length($a) <=> length($b) } @$solutions;  # solution we're working towards
