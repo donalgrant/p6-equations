@@ -1,7 +1,5 @@
 use v6;
 
-use lib '/Users/imel/gitdev/donalgrant/p6-equations/lib';
-
 use Globals;
 
 class Player {
@@ -12,8 +10,10 @@ class Player {
   method choose_goal(Board $board, Int $max_digits=3) {
     my Board $B;  # empty board, will be replaced
     # look for constructibility for each goal option
-    for shuffle($board.goal_options($max_digits)) -> $g {  
-      $B=Board.new($board.unused);
+                                                            note "goal options are {$board.goal_options($max_digits).join(',')}";
+                                                            note "in choose_goal, working on board\n{$board.display}\n with max_digits=$max_digits";    
+    for shuffle($board.goal_options($max_digits)) -> $g {   note "one goal option is $g";
+      $B=Board.new($board.unused);                          note $B.display;
       $B.move_to_goal($g);
       note "calculating goal $g";
       $B.clear_solutions;
@@ -30,9 +30,9 @@ class Player {
     my ($move,$section);
 
     put $B.display();
-    do { $move    = prompt "Cube:  " } until $B->unused().total($move);
-    do { $section = prompt "To (R(equired) P(ermitted) F(orbidden) B(onus) E(quation):  " }
-      until $section~~i:/^[RPFEB]/;
+    repeat { $move    = prompt "Cube:  " } until $B.unused.Bag{$move} > 0;
+    repeat { $section = prompt "To (R(equired) P(ermitted) F(orbidden) B(onus) E(quation):  " }
+      until $section ~~ m:i/^[RPFEB]/;
 
     given ($section.uc) {
       when ('R') {  $B.move_to_required($move) }
@@ -41,7 +41,7 @@ class Player {
       when ('B') { 
 	do { say "Only one bonus per turn"; return self.manual($B,$bonus_taken) } if $bonus_taken;
 	$B.move_to_forbidden($move);
-	return $self.manual($B,True);
+	return self.manual($B,True);
       }
       when ('E') { 
 	my $must_use=$B.required.add($move);
@@ -53,19 +53,16 @@ class Player {
 	else                      { return self.manual($B,$bonus_taken) }
 	my $rpn_cubes=Bag.new($rpn.list);
 	my $result = +$rpn;  # need to validate RPN here
-	do { say "Your RPN=$result, which is not the goal!";      return $self->manual($B,$bonus_taken) }
-	unless $result==$B.goal;
-	do { say "Your RPN does not use all the required cubes!"; return $self->manual($B,$bonus_taken) } 
-	unless $rpn_cubes.contains($must_use);
-	do { say "Not enough cubes to make your RPN!";            return $self->manual($B,$bonus_taken) } 
-	unless $now_avail.contains($rpn_cubes);
+	unless ($result==$B.goal)           { say "Your RPN=$result, which is not the goal!";  return self.manual($B,$bonus_taken) }
+	unless ($rpn_cubes (>=) $must_use)  { say "Your RPN does not use all required cubes!"; return self.manual($B,$bonus_taken) }
+	unless ($now_avail (>=) $rpn_cubes) { say "Not enough cubes to make your RPN!";        return self.manual($B,$bonus_taken) }
 	say "You win!  Congratulations!";  return Nil;
       }
     }
     self; 
   }
 
-  sub computed(Board $B, $max_cubes?) {
+  method computed(Board $B, $max_cubes?) {
     my $nr=$B.required.total;
     $max_cubes //= max($nr+(1-($nr%2)),3);
     
@@ -91,92 +88,92 @@ class Player {
     @solutions=filter_solutions_usable(@solutions,$B.available);
     if (@solutions) {  # solution still exists; find required or irrelevant cubes
       if ( (^100).pick < 10) {  # do something crazy about 10% of the time
-      	  $B.move_to_forbidden($B.unused.random_item);
+      	  $B.move_to_forbidden($B.unused.roll);
 	  return self;
       }	 
       my Bag $keep;  # keep is all the cubes used in solutions -- don't forbid these
-      for (@$solutions) { $keep->union($_->list()) }  # each $_ is now an RPN object
+      for (@solutions) { $keep = $keep (+) Bag.new(~$_.list) }  # each $_ is now an RPN object
       # try to put cube in required for shortest solution
       #    my ($shortest_rpn) = sort { length($a) <=> length($b) } @$solutions;  # solution we're working towards
-      my ($shortest_rpn) = ::shuffle @$solutions;  # solution we're working towards
-      my $shortest_rpn_cubes = Bag->new($shortest_rpn->list());
+      my ($shortest_rpn) = shuffle @solutions;  # solution we're working towards
+      my $shortest_rpn_cubes = Bag.new($shortest_rpn.list);
       # need to qualify $req_options by what's actually unused!  (could already be in permitted, so not unused)
-      my $req_options=$shortest_rpn_cubes->copy()->remove($B->required())->intersect($B->unused()); 
-      my $n_from_solve=$shortest_rpn_cubes->copy()->remove($B->required())->remove($B->permitted())->n();  # n left to solve
-      if ($req_options->n() && ($n_from_solve>2)) {  # can -->req'd if >2 to solve (no go out) & non-empty req'd options
-	my $cube=$req_options->random_item();
-	::assert { $B->unused()->contains($cube) } "cube $cube is actually still unused";
-	if (rand()>0.3) { $B->move_to_required($cube) } else { $B->move_to_permitted($cube) }  # change it up
+      my $req_options =($shortest_rpn_cubes (-) $B.required.Bag) (&) $B.unused.Bag;
+      my $n_from_solve=($shortest_rpn_cubes (-) $B.required.Bag (-) $B.permitted).total;  # n left to solve
+      if (($req_options.total > 0) && ($n_from_solve > 2)) {  # can -->req'd if >2 to solve (no go out) & non-empty req'd options
+	my $cube=$req_options.roll;
+	assert { $B.unused.Bag{$cube} > 0 }, "cube $cube is actually still unused";
+	if ((^100).pick > 30) { $B.move_to_required($cube) } else { $B.move_to_permitted($cube) }  # change it up
       } else {
-	my $excess=$B->unused()->copy()->remove($keep);
-	if ($excess->n()) {
-	  $B->move_to_forbidden($excess->random_item());
+	my $excess=$B.unused.Bag (-) $keep;
+	if ($excess.total > 0) {
+	  $B.move_to_forbidden($excess.roll);
 	} else {  # no forbidden cubes -- put in permitted
-	  $B->move_to_permitted($B->unused()->random_item());
+	  $B.move_to_permitted($B.unused.roll);
 	}
       }
     } else {  # have to now go and find new solutions
       say "Recalculating solutions...";
       # before we clear out the solutions and start over, can we build on our current solution list?
-      my $old_solutions=$B->solution_list();  
-      ::msg "old solutions ".Dumper($old_solutions) if $::opt{debug};
-      for my $old_rpn (@$old_solutions) {
-	::msg "looking at this RPN:  ".$old_rpn->display() if $::opt{debug};
+      my @old_solutions=$B.solution_list;  
+      msg "old solutions {@old_solutions.join("\n")}";
+      for @old_solutions -> $old_rpn {
+	msg "looking at this RPN:  $old_rpn";
 	# generate the bag of cubes for this rpn
-	my $rpn_bag=Bag->new($old_rpn->list());
+	my Bag $rpn_bag.= new($old_rpn.list);
 	# figure out which required is not in the solution
-	my $missing=$B->required()->remove($rpn_bag);
-	::msg "missing item is ".$missing->display() if $::opt{debug};
+	my $missing=$B.required.Bag (-) $rpn_bag;
+	msg "missing item is $missing";
 	# take the available cubes minus those in solution; separate into operators and numbers
-	my $avail=$B->available()->remove($rpn_bag);
-	::msg "available for new board = ".$avail->display() if $::opt{debug};
-	my @avail_num = Board::num_grep $avail->list();  ::msg "nums = ".join(',',@avail_num) if $::opt{debug};
-	my @avail_ops = Board::ops_grep $avail->list();  ::msg "ops  = ".join(',',@avail_ops) if $::opt{debug};
+	my $avail=$B.available.Bag (-) $rpn_bag;
+	msg "available for new board = $avail";
+	my @avail_num = $avail.kxxv.grep(/<digit>/); msg "nums = {@avail_num.join(',')}";
+	my @avail_ops = $avail.kxxv.grep(/ <ops> /); msg "ops  = {@avail_ops.join(',')}";
 	# step through operators
-	for my $op (::unique @avail_ops) {
-	  ::msg "try op $op" if $::opt{debug};
+	for @avail_ops.unique -> $op {
+	  note "try op $op";
 	  #    generate a Board with one required cube and the rest of the available cubes as unused (not including this op)
-	  my $NB=Board->new($avail->copy()->remove($op)->add($missing));
-	  $NB->move_to_required($_) for $missing->list();
+	  my Board $NB.=new( ($avail (-) $op.Bag) (+) $missing.Bag);
+	  $NB.move_to_required($_) for $missing.list;
 	  #    set goal to either 0 or 1 depending on operator:
-	  if ($op=~/[+-]/)       { $NB->install_goal('0') }
+	  if    ($op ~~ /<[+-]>/)    { $NB.install_goal('0') }
 	  #      +-   => goal=0
-	  elsif ($op=~m{[*/^@]}) { $NB->install_goal('1') }
+	  elsif ($op ~~ m{<[*/^@]>}) { $NB.install_goal('1') }
 	  #      */^@ => goal=1
 	  #    calculate goals for (1,3,5,7) cubes
-	  ::msg "Temp Board now set up:  ".$NB->display() if $::opt{debug};
-	  my $i_solutions;
+	  msg "Temp Board now set up:\n{$NB.display}";
+	  my @i_solutions;
 	  for (1,3,5) {
-	    $NB->calculate_solutions($_);
-	    $i_solutions=$NB->solution_list();
-	    last if scalar(@$i_solutions);
+	    $NB.calculate_solutions($_);
+	    @i_solutions=$NB.solution_list;
+	    last if @i_solutions > 0;
 	  }
-	  ::msg "Temp Board solutions ".Dumper($NB->solution_list()) if $::opt{debug};
+	  msg "Temp Board solutions {$NB.solution_list.join("\n")}";
 	  # append new solutions to old ones
-	  if (scalar(@$i_solutions)) {
-	    $B->clear_solutions();
-	    for my $new_solution (@$i_solutions) {
-	      my $rpn=($op eq '@') ? RPN->new("$new_solution$old_rpn$op") : RPN->new("$old_rpn$new_solution$op");
-	      ::msg "saving new solution:  $rpn" if $::opt{debug};
-	      $B->save_solution($rpn);
+	  if (@i_solutions > 0) {
+	    $B.clear_solutions;
+	    for @i_solutions -> $new_solution {
+	      my $rpn=($op eq '@') ?? RPN.new("$new_solution$old_rpn$op") !! RPN.new("$old_rpn$new_solution$op");
+	      msg "saving new solution:  $rpn";
+	      $B.save_solution($rpn);
 	    }
-	    ::msg "And now redo the turn with new solution list" if $::opt{debug};
-	    return $self->computed($B,$max_cubes);
+	    msg "And now redo the turn with new solution list";
+	    self.computed($B,$max_cubes);
 	  }
 	  # and we should consider moving solutions to Player instead of Board
 	}
       }
-      ::msg "finished" if $::opt{debug};
-      $B->clear_solutions();
+      msg "finished";
+      $B.clear_solutions;
       # try to construct the goal
       $max_cubes+=2;
-      die "I challenge you;  I can't see the solution" if $max_cubes>$B->available()->n();  # don't die, but get RPN, eval, then maybe concede
-      $B->calculate_solutions($max_cubes);
-      say Dumper($B->solution_list()) if $::opt{debug};
-      return $self->computed($B,$max_cubes);
+      die "I challenge you;  I can't see the solution" if $max_cubes>$B.available.Bag.total;  # don't die, but get RPN, eval, then maybe concede
+      $B.calculate_solutions($max_cubes);
+      say "{dd $B.solution_list}";
+      return self.computed($B,$max_cubes);
     }
     
-    return $self;
+    self;
     
   } # method computed
 

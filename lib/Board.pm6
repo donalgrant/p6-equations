@@ -2,7 +2,7 @@ use v6;
 
 use Algorithm::Combinatorics:from<Perl5> qw<tuples combinations permutations>;
 
-use lib '/Users/imel/gitdev/donalgrant/p6-equations/lib';
+use lib ".";
 use Globals;
 use RPN;
 
@@ -64,8 +64,8 @@ class Board {
   method move_to_permitted(Str $cube) { self!move($cube,$!U,$!P) }
   method move_to_forbidden(Str $cube) { self!move($cube,$!U,$!F) }
 
-  method move_to_goal(Str $cubes) {
-    for $cubes.comb -> $g { die "$g not available for goal" unless $!U{$g}>0; $!U{$g}-- }
+  method move_to_goal(Str $cubes) {  note "in move_to_goal with argument $cubes, unused is {$!U.kxxv.join(',')}; {$!U.total} cubes; types are {$!U.kxxv.map( *.^name ).join(',')}";
+    for $cubes.comb -> $g { die "$g not available for goal" unless $!U{$g} > 0; $!U{$g}-- }
     $!G=$cubes;
     self;
   }

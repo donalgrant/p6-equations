@@ -8,31 +8,37 @@ my $lib;
 BEGIN { $lib=q{/Users/imel/gitdev/donalgrant/p6-equations/lib} }
 
 use lib $lib;
-use-ok 'Globals';
-use-ok 'Player';
-use-ok 'Board';
 
+use-ok 'Globals';
+use Globals;
+
+use-ok 'Board';
+use Board;
+
+use-ok 'Player';
 use Player;
 
-my @player_methods=qw( new choose_goal manual );
+my @player_methods=qw< new choose_goal manual >;
 
-can-ok( 'Player', @player_methods );
+can-ok( Player.new, $_ ) for @player_methods;
 
-my $P=Player.new();
-my $B=Board.new(Bag.new(qw( 1 2 2 3 - )));
+my $P=Player.new;
+my $B=Board.new(Bag.new(qw{ 1 2 2 3 - }.join('')));
 
 isa-ok($P,'Player');
 isa-ok($B,'Board');
+
+note $B.display;
 
 my $g=$P.choose_goal($B);
 
 is( $g, 1, "Only one goal possible");
 
 ok( $P.choose_goal(Board.new(Bag.new(qw{ 1 2 3 4 5 6 7 8 9 - + * / ^ @ }))).defined, "Found a goal on a larger board" );
-is( $P.choose_goal(Board.new(Bag.new(qw( - * - + / }))),      Nil, "No goal possible: no numbers");
-is( $P.choose_goal(Board.new(Bag.new(qw( 1 - + / }))),        Nil, "No goal possible: single digit");
-is( $P.choose_goal(Board.new(Bag.new(qw( 1 2 3 * / }))),      Nil, "No goal possible: cannot construct" );
-is( $P.choose_goal(Board.new(Bag.new(qw( 1 2 1 2 * / })), 1), Nil, "No goal possible: 1 digit, no singletons" );
+is( $P.choose_goal(Board.new(Bag.new(qw{ - * - + / }))),      Nil, "No goal possible: no numbers");
+is( $P.choose_goal(Board.new(Bag.new(qw{ 1 - + / }))),        Nil, "No goal possible: single digit");
+is( $P.choose_goal(Board.new(Bag.new(qw{ 1 2 3 * / }))),      Nil, "No goal possible: cannot construct" );
+is( $P.choose_goal(Board.new(Bag.new(qw{ 1 2 1 2 * / })), 1), Nil, "No goal possible: 1 digit, no singletons" );
 
 my $cube_str='*++------///001111112333356@@@25';
 
