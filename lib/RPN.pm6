@@ -80,8 +80,8 @@ sub calc ($n1,$op,$n2) is export {
   return $n1+$n2                                                        if $op eq '+';
   return $n1-$n2                                                        if $op eq '-';
   return $n1*$n2                                                        if $op eq '*';
-  return ( ($n2==0)                          ?? Nil !! $n1/$n2)         if $op eq '/';
-  return $n1**$n2                                                       if $op eq '^';
+  return ( ($n2==0)                          ?? Nil !! $n1/$n2        ) if $op eq '/';
+  return ( ($n1==0 and $n2 < 0)              ?? Nil !! $n1**$n2       ) if $op eq '^';
   return ( ($n1==0 or ($n2 < 0 and $n1 > 0)) ?? Nil !! $n2**(1.0/$n1) ) if $op eq '@';
   quit "Unrecognized operator:  $op";
 }

@@ -10,10 +10,9 @@ class Player {
   method choose_goal(Board $board, Int $max_digits=3) {
     my Board $B;  # empty board, will be replaced
     # look for constructibility for each goal option
-                                                            note "goal options are {$board.goal_options($max_digits).join(',')}";
-                                                            note "in choose_goal, working on board\n{$board.display}\n with max_digits=$max_digits";    
+                                                            note "goal options are {$board.goal_options($max_digits).join(',')}, unused={$board.unused.join(',')}";
     for shuffle($board.goal_options($max_digits)) -> $g {   note "one goal option is $g";
-      $B=Board.new($board.unused);                          note $B.display;
+      $B=Board.new($board.unused.join(''));                 note $B.display;
       $B.move_to_goal($g);
       note "calculating goal $g";
       $B.clear_solutions;

@@ -18,7 +18,7 @@ my @board_methods=qw<new U R P F G clear_solutions save_solution required permit
 
 can-ok( Board.new(''), $_ ) for @board_methods;
 
-my $cube_list=q{1 2 2 3 - +};
+my $cube_list=qw{1 2 2 3 - +};
 
 isa-ok(Board.new($cube_list.join('')),     'Board', "Board from String");
 isa-ok(Board.new($cube_list.join(' ')),    'Board', "Board with spaces");   # ignore spaces
@@ -81,5 +81,8 @@ for @rpn_list { is( $_.Numeric, $B.goal, "$_ from solution list evals to goal" )
 ok( +@rpn_list == +@[filter_solutions_usable(  @rpn_list.map( *.Str ),$B.available.Bag)], "Every solution passed usable filter"   );
 ok( +@rpn_list == +@[filter_solutions_required(@rpn_list.map( *.Str), $B.required.Bag )], "Every solution passed required filter" );
 
+$B=Board.new(Bag.new(qw{1 2 2 3 -}));
+$B.move_to_goal('13');
+$B.calculate_solutions(3);
 
 done-testing;

@@ -23,7 +23,7 @@ my @player_methods=qw< new choose_goal manual >;
 can-ok( Player.new, $_ ) for @player_methods;
 
 my $P=Player.new;
-my $B=Board.new(Bag.new(qw{ 1 2 2 3 - }.join('')));
+my $B=Board.new(Bag.new(qw{1 2 2 3 -}));
 
 isa-ok($P,'Player');
 isa-ok($B,'Board');

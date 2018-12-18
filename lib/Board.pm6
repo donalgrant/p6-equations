@@ -16,11 +16,11 @@ class Board {
   has Str $.G='';        # goal (string of cubes)
   has Numeric %.S{Str};  # solutions (keys are rpn strings, values are numeric for RPN)
 
-  multi method new( BagHash $U ) { self.bless(:$U) }
-  multi method new( Bag $B     ) { my $U=$B.BagHash;                     Board.new(:$U) }
-  multi method new( Seq $cubes ) { my $U=BagHash.new($[$cubes]);         Board.new(:$U) }
-  multi method new( Str $cubes ) { my $U=BagHash.new($cubes.comb(/\S/)); Board.new(:$U) }
-  multi method new( List $cubes) { my $U=BagHash.new($cubes);            Board.new(:$U) }
+  multi method new( BagHash $U ) { note "Board from BagHash {$U.kxxv.join(',')}"; self.bless(:$U) }
+  multi method new( Bag $B     ) { note "Board from Bag {$B.kxxv.join(',')}";     my $U=$B.BagHash;                     Board.new(:$U) }
+  multi method new( Seq $cubes ) { note "Board from Seq {$cubes.join(',')}";     my $U=BagHash.new($[$cubes]);         Board.new(:$U) }
+  multi method new( Str $cubes ) { note "Board from Str $cubes";     my $U=BagHash.new($cubes.comb(/\S/)); note "U will be {$U.kxxv.join(',')}"; Board.new(:$U) }
+  multi method new( List $cubes) { note "Board from List {$cubes.join(',')}";    my $U=BagHash.new($cubes);            Board.new(:$U) }
   
   submethod TWEAK() { self.clear_solutions; $!R=BagHash.new; $!P=BagHash.new; $!F=BagHash.new }
   
@@ -44,10 +44,10 @@ class Board {
     my $div='_' x 40;
     my $out=qq:to/END/;
       $div                            
-      Unused:     { self.unused.sort }
-      Required:   { self.required.sort }
-      Permitted:  { self.permitted.sort }
-      Forbidden:  { self.forbidden.sort }
+      Unused:     { self.unused.sort } ({$!U.total} cubes)
+      Required:   { self.required.sort } ({$!R.total} cubes)
+      Permitted:  { self.permitted.sort } ({$!P.total} cubes)
+      Forbidden:  { self.forbidden.sort } ({$!F.total} cubes)
       Goal:       { self.goal }
       $div
     END
@@ -64,7 +64,7 @@ class Board {
   method move_to_permitted(Str $cube) { self!move($cube,$!U,$!P) }
   method move_to_forbidden(Str $cube) { self!move($cube,$!U,$!F) }
 
-  method move_to_goal(Str $cubes) {  note "in move_to_goal with argument $cubes, unused is {$!U.kxxv.join(',')}; {$!U.total} cubes; types are {$!U.kxxv.map( *.^name ).join(',')}";
+  method move_to_goal(Str $cubes) {  note "in move_to_goal with argument $cubes, unused is {$!U.kxxv.join(',')}; {$!U.total} cubes";
     for $cubes.comb -> $g { die "$g not available for goal" unless $!U{$g} > 0; $!U{$g}-- }
     $!G=$cubes;
     self;
@@ -81,18 +81,19 @@ class Board {
   method req_num_tuples(@c) { self!req_tuples(@c,&digit) }
   method req_ops_tuples(@c) { self!req_tuples(@c,&op)    }
 
-  method goal_options( $max_digits=3 ) {
-    my $digit_bag=self.available.grep(/<digit>/).Bag;
-    my @goal_options=$digit_bag.pairs.grep( *.value==1 ).map( *.key );  # singletons
-    for 2..$max_digits -> $k {
+  method goal_options( $max_digits=3 ) {                               
+    my $digit_bag=self.available.grep(/<digit>/).Bag;                  
+    my @goal_options=$digit_bag.pairs.grep( *.value==1 ).map( *.key ); 
+    for 2..$max_digits -> $k {                                         
       last if $k>$digit_bag.total;
-      my @p=tuples( $digit_bag.kxxv, $k );
+      my @p=tuples( $digit_bag.kxxv, $k );                             
       @goal_options.push( |@p.unique(:as( *.join('') )).map( *.join('') ).grep( none /^0\d+/ ) );
     }
-    @goal_options;
+    @goal_options;   
   }
 
   method calculate_solutions($ncubes) {  # ncubes is maximum number of cubes to use
+    note "calculate_solutions for ncubes=$ncubes";
     die "Goal must be set before calculating solutions" unless $!G.chars > 0;
     die "Number of cubes in a solution must be odd!" if $ncubes %% 2;
     my Bag $bag  = self.available.Bag;
@@ -100,12 +101,17 @@ class Board {
     my Bag $ops .= new( $bag.kxxv.grep(/ <op>  /) );
     my $nops=min($ops.total,$num.total-1,floor($ncubes/2));
     my $nnum=min($nops+1,$num.total,$ncubes-$nops);
+    note "nops=$nops; nnum=$nnum";
     return self unless $nops>=1 && $nnum>=2;
     my @pn=get_tuples $nnum, $num, Bag.new( $!R.kxxv.grep(/<digit>/) );
     my @po=get_tuples $nops, $ops, Bag.new( $!R.kxxv.grep(/ <op>  /) );
     my @ops_slots=ops_slots($nops);
+    note "pn=[{@pn.map({ $_.join(',') }).join('],[')}]";
+    note "po=[{@po.map({ $_.join(',') }).join('],[')}]";
+    note "ops_slots={@ops_slots.join(',')}";
     my $max_solutions=200000;
     my $n_solutions= @pn * @po * @ops_slots;    # numeric context -- product of array sizes
+    note "n_solutions=$n_solutions";
     die "issue with get_tuples? pn={@pn}, po={@po}; ops_slots={@ops_slots}" unless $n_solutions>0;
     if ($n_solutions>$max_solutions) {
       my $reduce_factor=min( 4.0, ($n_solutions/$max_solutions)**(1.0/3.0) ); 
@@ -121,14 +127,17 @@ class Board {
     my $i=0;
     for @pn -> $pn {
       for @po -> $po {
-         for @ops_slots -> $slot {  # now construct this RPN
-	   my ($ipn,$ipo)=(0,0);
-	   my $x=$pn[$ipn++];
+        for @ops_slots -> $slot {  # now construct this RPN
+# note "constructing RPN for pn={$pn.join(',')}; po={$po.join(',')}; slot=$slot";
+	  my ($ipn,$ipo)=(0,0);
+	  my $x=$pn[$ipn++];
 	  for $slot.comb -> $s {
 	    $x~=$pn[$ipn++];
 	    $x~=$po[$ipo++] for (1..$s);
 	  }
+#	  note "creating RPN from $x";
 	  my $rpn=RPN.new($x);
+# note "RPN=$rpn with value {+$rpn}";	  
 	  self.save_solution($rpn);
 	}
       }
@@ -160,14 +169,24 @@ sub unique_tuples(@a) { @a.unique(:as( *.join('') )) }
 
 # generate the list of tuples of length $n from Bag $src while enforcing use of all in Bag $req
 
-sub get_tuples($n,Bag $src,Bag $req) {
+sub get_tuples($n,Bag $src,Bag $req) {  note "get_tuples with $n cubes from {$src.kxxv.join(',')} with required use of {$req.kxxv.join(',')}";
   return () unless $src (>=) $req;
-  my $remain=($src (-) $req).BagHash;
+  my $remain=($src (-) $req).BagHash;  note "non-required are {$remain.kxxv.join(',')}";
   my @req_list=$req.kxxv;
-  my @comb = ($n > @req_list)
-    ?? unique_tuples [combinations( $[ $remain.kxxv ], $n - @req_list ) ].map( { Array.new.append(|@req_list,|$_) } )
-    !! $[ $req.kxxv ]; 
+  note "$n vs {+@req_list} will generate combinations {[combinations( $[ $remain.kxxv ], $n - @req_list )].join(',')}";
+  # this is tricky -- combinations will return an array of arrays unless there is only a single combination, in which case it's just an array
+  my @comb = $[ $req.kxxv ];
+  if ($n > @req_list) {
+    my @temp=[combinations( $[ $remain.kxxv ], $n - @req_list ) ];  note "temp={@temp.join(',')}";
+    if (@temp[0]~~'Int') {  # just an array
+      @comb=unique_tuples Array.new.append(|@req_list,|@temp);  note "just an array; comb={@comb.join(',')}";
+    } else { # array of arrays
+      @comb=unique_tuples @temp.map({ Array.new.append(|@req_list,|$_) });   note "array of arrays";
+    }
+  }
   # now for each element of @comb, generate all the permutations and add to the total list
+  note "number of combinations is {@comb.elems}; comb=[{@comb.map({ $_.join(',') }).join('],[')}]";
+  note "will return [{ unique_tuples( @comb.map({ permutations($[ |$_ ]) }).flat ).map({ $_.join(',') }).join('],[') }]";
   unique_tuples( @comb.map({ permutations($[ |$_ ]) }).flat );
 }
 	       
