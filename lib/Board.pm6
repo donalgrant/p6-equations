@@ -64,7 +64,7 @@ class Board {
   method move_to_permitted(Str $cube) { self!move($cube,$!U,$!P) }
   method move_to_forbidden(Str $cube) { self!move($cube,$!U,$!F) }
 
-  method move_to_goal(Str $cubes) {  note "in move_to_goal with argument $cubes, unused is {$!U.kxxv.join(',')}; {$!U.total} cubes";
+  method move_to_goal(Str $cubes) {  
     for $cubes.comb -> $g { die "$g not available for goal" unless $!U{$g} > 0; $!U{$g}-- }
     $!G=$cubes;
     self;
@@ -93,7 +93,7 @@ class Board {
   }
 
   method calculate_solutions($ncubes) {  # ncubes is maximum number of cubes to use
-    note "calculate_solutions for ncubes=$ncubes";
+#    note "calculate_solutions for ncubes=$ncubes";
     die "Goal must be set before calculating solutions" unless $!G.chars > 0;
     die "Number of cubes in a solution must be odd!" if $ncubes %% 2;
     my Bag $bag  = self.available.Bag;
@@ -101,17 +101,17 @@ class Board {
     my Bag $ops .= new( $bag.kxxv.grep(/ <op>  /) );
     my $nops=min($ops.total,$num.total-1,floor($ncubes/2));
     my $nnum=min($nops+1,$num.total,$ncubes-$nops);
-    note "nops=$nops; nnum=$nnum";
+#    note "nops=$nops; nnum=$nnum";
     return self unless $nops>=1 && $nnum>=2;
     my @pn=get_tuples $nnum, $num, Bag.new( $!R.kxxv.grep(/<digit>/) );
     my @po=get_tuples $nops, $ops, Bag.new( $!R.kxxv.grep(/ <op>  /) );
     my @ops_slots=ops_slots($nops);
-    note "pn=[{@pn.map({ $_.join(',') }).join('],[')}]";
-    note "po=[{@po.map({ $_.join(',') }).join('],[')}]";
-    note "ops_slots={@ops_slots.join(',')}";
+#    note "pn=[{@pn.map({ $_.join(',') }).join('],[')}]";
+#    note "po=[{@po.map({ $_.join(',') }).join('],[')}]";
+#    note "ops_slots={@ops_slots.join(',')}";
     my $max_solutions=200000;
     my $n_solutions= @pn * @po * @ops_slots;    # numeric context -- product of array sizes
-    note "n_solutions=$n_solutions";
+#    note "n_solutions=$n_solutions";
     die "issue with get_tuples? pn={@pn}, po={@po}; ops_slots={@ops_slots}" unless $n_solutions>0;
     if ($n_solutions>$max_solutions) {
       my $reduce_factor=min( 4.0, ($n_solutions/$max_solutions)**(1.0/3.0) ); 
@@ -169,24 +169,25 @@ sub unique_tuples(@a) { @a.unique(:as( *.join('') )) }
 
 # generate the list of tuples of length $n from Bag $src while enforcing use of all in Bag $req
 
-sub get_tuples($n,Bag $src,Bag $req) {  note "get_tuples with $n cubes from {$src.kxxv.join(',')} with required use of {$req.kxxv.join(',')}";
+sub get_tuples($n,Bag $src,Bag $req) { 
   return () unless $src (>=) $req;
-  my $remain=($src (-) $req).BagHash;  note "non-required are {$remain.kxxv.join(',')}";
+  my $remain=($src (-) $req).BagHash;  
   my @req_list=$req.kxxv;
-  note "$n vs {+@req_list} will generate combinations {[combinations( $[ $remain.kxxv ], $n - @req_list )].join(',')}";
+#  note "$n vs {+@req_list} will generate combinations {[combinations( $[ $remain.kxxv ], $n - @req_list )].join(',')}";
   # this is tricky -- combinations will return an array of arrays unless there is only a single combination, in which case it's just an array
   my @comb = $[ $req.kxxv ];
   if ($n > @req_list) {
-    my @temp=[combinations( $[ $remain.kxxv ], $n - @req_list ) ];  note "temp={@temp.join(',')}";
-    if (@temp[0]~~'Int') {  # just an array
-      @comb=unique_tuples Array.new.append(|@req_list,|@temp);  note "just an array; comb={@comb.join(',')}";
-    } else { # array of arrays
-      @comb=unique_tuples @temp.map({ Array.new.append(|@req_list,|$_) });   note "array of arrays";
+    my @temp=[combinations( $[ $remain.kxxv ], $n - @req_list ) ];   # note "temp={@temp.join(',')}"; note "type of [0] is {@temp[0].^name}";
+ #   note "truth of temp[0] ~~ /Array/:  {so @temp[0].^name ~~ /Array/}";
+    if (@temp[0].^name~~/Array/) {  # array of arrays
+      @comb=unique_tuples @temp.map({ Array.new.append(|@req_list,|$_) }); #  note "array of arrays";
+    } else { # just an array
+      @comb[0]=Array.new.append(|@req_list,|@temp);  # note "just an array; comb=[{@comb.map({ $_.join(',') }).join('],[')}]";
     }
   }
   # now for each element of @comb, generate all the permutations and add to the total list
-  note "number of combinations is {@comb.elems}; comb=[{@comb.map({ $_.join(',') }).join('],[')}]";
-  note "will return [{ unique_tuples( @comb.map({ permutations($[ |$_ ]) }).flat ).map({ $_.join(',') }).join('],[') }]";
+#  note "number of combinations is {@comb.elems}; comb=[{@comb.map({ $_.join(',') }).join('],[')}]";
+#  note "will return [{ unique_tuples( @comb.map({ permutations($[ |$_ ]) }).flat ).map({ $_.join(',') }).join('],[') }]";
   unique_tuples( @comb.map({ permutations($[ |$_ ]) }).flat );
 }
 	       

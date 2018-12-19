@@ -17,9 +17,9 @@ class Player {
       note "calculating goal $g";
       $B.clear_solutions;
       $B.calculate_solutions($_) for (3,5);
-      last if $B.solution_list.elems>0;
+      last if $B.solution_list.elems > 0;
     }
-    return Nil unless $B.solution_list.elems>0;
+    return Nil unless $B.solution_list.elems > 0;
     note "Solutions:  {$B.solution_list.join("\n")}";
     return $B.goal();
   }
@@ -79,7 +79,7 @@ class Player {
     @solutions=filter_solutions_required(@solutions,$B.required);
     for ($B.unused.set) {
       my @go_out=filter_solutions_usable(@solutions,$Go_Out_Cubes (+) $_.Bag);
-      if (@go_out.elems>0) {
+      if (@go_out.elems > 0) {
 	say "I win!  I can go out with solution(s):\n{@go_out.map({$_.aos}).join("\n")}";
 	return Nil;
       }
