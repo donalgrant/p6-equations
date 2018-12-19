@@ -36,7 +36,7 @@ class Board {
   method forbidden { $!F.kxxv }
   method unused    { $!U.kxxv }
 
-  method goal      { +$!G // Nil }
+  method goal      { $!G // Nil }
 
   method available  { ($!R (+) $!P (+) $!U).kxxv }
   
@@ -44,8 +44,8 @@ class Board {
     my $div='_' x 40;
     my $out=qq:to/END/;
       $div                            
-      Unused:     { self.unused.sort } ({$!U.total} cubes)
-      Required:   { self.required.sort } ({$!R.total} cubes)
+      Unused:     { self.unused.sort    } ({$!U.total} cubes)
+      Required:   { self.required.sort  } ({$!R.total} cubes)
       Permitted:  { self.permitted.sort } ({$!P.total} cubes)
       Forbidden:  { self.forbidden.sort } ({$!F.total} cubes)
       Goal:       { self.goal }
