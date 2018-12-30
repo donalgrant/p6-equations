@@ -8,19 +8,16 @@ class Player {
   use Board;
   
   method choose_goal(Board $board, Int $max_digits=3) {
-    my Board $B;  # empty board, will be replaced
+    my Board $B.= new('');  # Empty Board -- placeholder 
     # look for constructibility for each goal option
-                                                            note "goal options are {$board.goal_options($max_digits).join(',')}, unused={$board.unused.join(',')}";
-    for shuffle($board.goal_options($max_digits)) -> $g {   note "one goal option is $g";
-      $B=Board.new($board.unused.join(''));                 note $B.display;
+    for shuffle($board.goal_options($max_digits)) -> $g {
+      $B=Board.new($board.unused.join(''));              
       $B.move_to_goal($g);
-      note "calculating goal $g";
       $B.clear_solutions;
       $B.calculate_solutions($_) for (3,5);
       last if $B.solution_list.elems > 0;
     }
     return Nil unless $B.solution_list.elems > 0;
-    note "Solutions:  {$B.solution_list.join("\n")}";
     return $B.goal();
   }
 
@@ -62,7 +59,7 @@ class Player {
   }
 
   method computed(Board $B, $max_cubes?) {
-    my $nr=$B.required.total;
+    my $nr = +@[$B.required];
     $max_cubes //= max($nr+(1-($nr%2)),3);
     
     # need to work out bonus move for computer, triggered when forbidden move is available
@@ -73,18 +70,18 @@ class Player {
     # to go out.  Maybe only need to do this in the scenario where haven't got a "required" move.
     
     # current solutions still valid?
-    my $Go_Out_Cubes=$B.required.add($B.permitted);  # + one from the board 
+    my $Go_Out_Cubes=($B.required.Bag (+) $B.permitted.Bag).kxxv;  # + one from the board 
     loop:  
     my @solutions=$B.solution_list;
-    @solutions=filter_solutions_required(@solutions,$B.required);
-    for ($B.unused.set) {
-      my @go_out=filter_solutions_usable(@solutions,$Go_Out_Cubes (+) $_.Bag);
+    @solutions=filter_solutions_required(@solutions,$B.required.Bag);
+    for ([$B.unused.Set]) {
+      my @go_out=filter_solutions_usable(@solutions,$Go_Out_Cubes.Bag (+) $_.Bag);
       if (@go_out.elems > 0) {
 	say "I win!  I can go out with solution(s):\n{@go_out.map({$_.aos}).join("\n")}";
 	return Nil;
       }
     }
-    @solutions=filter_solutions_usable(@solutions,$B.available);
+    @solutions=filter_solutions_usable(@solutions,$B.available.Bag);
     if (@solutions) {  # solution still exists; find required or irrelevant cubes
       if ( (^100).pick < 10) {  # do something crazy about 10% of the time
       	  $B.move_to_forbidden($B.unused.roll);
@@ -97,8 +94,8 @@ class Player {
       my ($shortest_rpn) = shuffle @solutions;  # solution we're working towards
       my $shortest_rpn_cubes = Bag.new($shortest_rpn.list);
       # need to qualify $req_options by what's actually unused!  (could already be in permitted, so not unused)
-      my $req_options =($shortest_rpn_cubes (-) $B.required.Bag) (&) $B.unused.Bag;
-      my $n_from_solve=($shortest_rpn_cubes (-) $B.required.Bag (-) $B.permitted).total;  # n left to solve
+      my $req_options = ($shortest_rpn_cubes (-) $B.required.Bag) (&) $B.unused.Bag;
+      my $n_from_solve=(($shortest_rpn_cubes (-) $B.required.Bag) (-) $B.permitted).total;  # n left to solve
       if (($req_options.total > 0) && ($n_from_solve > 2)) {  # can -->req'd if >2 to solve (no go out) & non-empty req'd options
 	my $cube=$req_options.roll;
 	assert { $B.unused.Bag{$cube} > 0 }, "cube $cube is actually still unused";
@@ -165,11 +162,9 @@ class Player {
       msg "finished";
       $B.clear_solutions;
       # try to construct the goal
-      $max_cubes+=2;
-      die "I challenge you;  I can't see the solution" if $max_cubes>$B.available.Bag.total;  # don't die, but get RPN, eval, then maybe concede
-      $B.calculate_solutions($max_cubes);
-      say "{dd $B.solution_list}";
-      return self.computed($B,$max_cubes);
+      die "I challenge you;  I can't see the solution" if $max_cubes+2 > $B.available.Bag.total;  # don't die, but get RPN, eval, then maybe concede
+      $B.calculate_solutions($max_cubes+2);
+      return self.computed($B,$max_cubes+2);
     }
     
     self;

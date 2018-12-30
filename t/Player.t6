@@ -44,13 +44,13 @@ my $cube_str='*++------///001111112333356@@@25';
 
 # play five boards
 
-for ^5 {
+for ^5 { note "Testing Board $_";
   $B=Board.new(Bag.new($cube_str.comb));
   my $g=$P.choose_goal($B);
   ok( $g.defined, "Choose a goal" );
   ok( $B.move_to_goal($g), "move to goal" );
  inner:
-  while True { 
+  loop { 
     note $B.display(); 
     last inner unless $P.computed($B,7); 
 #    last inner unless $P.manual($B);

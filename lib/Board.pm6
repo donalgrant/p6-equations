@@ -17,12 +17,12 @@ class Board {
   has Numeric %.S{Str};  # solutions (keys are rpn strings, values are numeric for RPN)
 
   multi method new( BagHash $U ) { note "Board from BagHash {$U.kxxv.join(',')}"; self.bless(:$U) }
-  multi method new( Bag $B     ) { note "Board from Bag {$B.kxxv.join(',')}";     my $U=$B.BagHash;                     Board.new(:$U) }
+  multi method new( Bag $B     ) { my $U=$B.BagHash;                     Board.new(:$U) }
   multi method new( Seq $cubes ) { note "Board from Seq {$cubes.join(',')}";     my $U=BagHash.new($[$cubes]);         Board.new(:$U) }
-  multi method new( Str $cubes ) { note "Board from Str $cubes";     my $U=BagHash.new($cubes.comb(/\S/)); note "U will be {$U.kxxv.join(',')}"; Board.new(:$U) }
+  multi method new( Str $cubes ) { my $U=BagHash.new($cubes.comb(/\S/)); Board.new(:$U) }
   multi method new( List $cubes) { note "Board from List {$cubes.join(',')}";    my $U=BagHash.new($cubes);            Board.new(:$U) }
   
-  submethod TWEAK() { self.clear_solutions; $!R=BagHash.new; $!P=BagHash.new; $!F=BagHash.new }
+  submethod TWEAK() { $!R=BagHash.new; $!P=BagHash.new; $!F=BagHash.new; self.clear_solutions }
   
   method clear_solutions { %!S=(); self }
 
@@ -72,7 +72,7 @@ class Board {
 
   method install_goal($goal) { $!G=$goal; self }
 
-  method solution_list { %!S.keys.grep({ %!S{$_}.defined }).map({ RPN.new($_) }) }
+  method solution_list { return %!S.keys.grep({ %!S{$_}.defined }).map({ RPN.new($_) }) }
 
   method !req_tuples(@c,&r) {
     my $bag=$!R.list.grep(&r).Bag;
@@ -197,9 +197,8 @@ sub choose_n($n,@c) {
   @c[0..$n-1];
 }
 
-
-sub filter_solutions_usable(  @h, Bag $b) is export { @h.grep({ $_.comb.Bag (<=) $b }) }
-sub filter_solutions_required(@h, Bag $b) is export { @h.grep({ $_.comb.Bag (>=) $b }) }
+sub filter_solutions_usable(  @h, Bag $b) is export { @h.grep({ "$_".comb.Bag (<=) $b }) }
+sub filter_solutions_required(@h, Bag $b) is export { @h.grep({ "$_".comb.Bag (>=) $b }) }
 
 =begin pod
 
