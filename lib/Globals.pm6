@@ -1,5 +1,7 @@
 use v6;
 
+use Algorithm::Combinatorics:from<Perl5> qw<tuples combinations permutations>;
+
 module Globals {
 
   sub caller() is export { Backtrace.new.list }

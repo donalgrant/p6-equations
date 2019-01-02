@@ -52,7 +52,7 @@ for ^5 { note "Testing Board $_";
  inner:
   loop { 
     note $B.display(); 
-    last inner unless $P.computed($B,7); 
+    last inner unless $P.turn($B); 
 #    last inner unless $P.manual($B);
   }
 }

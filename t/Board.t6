@@ -11,10 +11,9 @@ use lib $lib;
 use-ok 'Board';
 use Board;
 
-my @board_methods=qw<new U R P F G clear_solutions save_solution required permitted forbidden unused goal
+my @board_methods=qw<new U R P F G required permitted forbidden unused goal
 		     available display move_to_required move_to_permitted move_to_forbidden move_to_goal
-		     install_goal solution_list req_num_tuples req_ops_tuples goal_options
-		     calculate_solutions>;
+		     install_goal req_num_tuples req_ops_tuples goal_options>;
 
 can-ok( Board.new(''), $_ ) for @board_methods;
 
@@ -63,22 +62,7 @@ $B.move_to_required($_)  for qw{ 8 - - ^ * 2 5 };
 
 lives-ok({ put $B.display },"Display a larger board");
 
-$B.clear_solutions;
-is $B.solution_list, Empty, "Empty solution list";
-dies-ok( { $B.calculate_solutions(5) }, "Attempt to Calculate Solutions prior to setting goal should fail." );
-
 $B.move_to_goal("20");
 is( $B.goal, 20, "Goal is set for this board" );
-
-lives-ok( { $B.calculate_solutions(5) }, "Can calculate once goal has been set." );
-is $B.solution_list, ().list, "Empty solution list (still)";
-
-lives-ok( { $B.calculate_solutions(9) }, "Calculate with more cubes" );
-
-my @rpn_list=$B.solution_list;
-for @rpn_list { is( $_.Numeric, $B.goal, "$_ from solution list evals to goal" ) }
-
-ok( +@rpn_list == +@[filter_solutions_usable(  @rpn_list.map( *.Str ),$B.available.Bag)], "Every solution passed usable filter"   );
-ok( +@rpn_list == +@[filter_solutions_required(@rpn_list.map( *.Str), $B.required.Bag )], "Every solution passed required filter" );
 
 done-testing;

@@ -35,7 +35,8 @@ class Player {
   
   # move to Board_Solver
   method choose_goal(Board $board, Int $max_digits=2) {
-    my Board $B.= new('');  # Empty Board -- placeholder 
+    my Board $B.= new('');  # Empty Board -- placeholder
+    self.clear_solutions;
     # look for constructibility for each goal option
     for shuffle($board.goal_options($max_digits)) -> $g {
       $B=Board.new($board.unused.join(''));              
@@ -115,7 +116,7 @@ class Player {
       for %not_doable.keys -> $r {
 	my $missing = $BS.cubes-missing_for( RPN.new($r) );
 	if ($missing.elems > 0) {
-	  note "$r is no longer doable -- needs {$missing.kxxv}";
+	  note "{RPN.new($r).aos} is no longer doable -- needs {$missing.kxxv}";
 	  # can we construct a missing number with a 3 or 5 element equation
 	  #     from available cubes not used by RPN?
 	  
@@ -128,7 +129,7 @@ class Player {
 	  
 	} else { # must be a new required which is not part of the RPN
 	  my $extra_req = $BS.req-not-in( RPN.new($r) );
-	  note "$r is no longer doable -- required {$extra_req.kxxv}";
+	  note "{RPN.new($r).aos} is no longer doable -- required {$extra_req.kxxv}";
 	  # only do this (for now?) for a single extra required element
 	  
 	  # can we extend the formula to include the new number using
