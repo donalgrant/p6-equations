@@ -20,10 +20,12 @@ class Player {
     for self.solution_list { %!S{~$_}:delete unless ($BS.valid_solution($_) and $BS.doable_solution($_))  }
     self;
   }
-  
-  method generate_solutions( Board $B ) {
+
+  # should make cube_limit a Player parameter; would also like to thread this
+  method generate_solutions( Board $B, $cube_limit=13 ) {
     my Board_Solver $BS .= new($B);
     loop (my $rpn_length=$BS.min_solution_cubes; $rpn_length <= $BS.max_solution_cubes; $rpn_length+=2) {
+      last if $rpn_length > $cube_limit;
       $BS.calculate_solutions($rpn_length);
       last if $BS.solution_found;
     }
@@ -32,7 +34,7 @@ class Player {
   }
   
   # move to Board_Solver
-  method choose_goal(Board $board, Int $max_digits=3) {
+  method choose_goal(Board $board, Int $max_digits=2) {
     my Board $B.= new('');  # Empty Board -- placeholder 
     # look for constructibility for each goal option
     for shuffle($board.goal_options($max_digits)) -> $g {
@@ -46,7 +48,7 @@ class Player {
     }
     return Nil unless self.solution_list.elems > 0;
     note "Chose a goal:  {$B.goal}";
-    note "Can get this by:  {self.solution_list.join('  ')}";
+    note "Can get this by:  {self.solution_list.map({ $_.aos }).join('  ')}";
     return $B.goal;
   }
 
@@ -87,10 +89,8 @@ class Player {
     self; 
   }
 
-  method get_targets(Board $B) {
+  method turn( Board $B ) {
 
-    note "get_targets for Board:\n{$B.display}";
-    
     self.generate_solutions($B) unless (%!S.elems>0);
 
     unless (%!S.elems>0) {
@@ -105,11 +105,48 @@ class Player {
     for self.solution_list -> $rpn { $BS.doable_solution($rpn) ?? ( %still_doable{~$rpn} = +$rpn ) !! ( %not_doable{~$rpn} = +$rpn ) }
 
     if (%still_doable.elems>0) {
-      # could possible extend doable solutions here via add / replace
+      # could possibly extend doable solutions here via add / replace
       # choose a move based on the current list of valid solutions
+      # only worth doing if we then rule out the original solution
+      # by requiring something from the new one
+      
     } else {
       # can we make some solutions doable by extend / replace, or both?
+      for %not_doable.keys -> $r {
+	my $missing = $BS.cubes-missing_for( RPN.new($r) );
+	if ($missing.elems > 0) {
+	  note "$r is no longer doable -- needs {$missing.kxxv}";
+	  # can we construct a missing number with a 3 or 5 element equation
+	  #     from available cubes not used by RPN?
+	  
+	  # can we construct a missing operator with an equation representing
+	  #     is inverse?  (can't do it for '-' and '/')
+	  #   x+w --> x-(y-z)   where w = z-y
+	  #   x*w --> x/(y/z)   where w = z/y
+	  #   x^w --> (y/z)@x   where w = z/y
+	  #   w@x --> (x^(y/z)) where w = z/y
+	  
+	} else { # must be a new required which is not part of the RPN
+	  my $extra_req = $BS.req-not-in( RPN.new($r) );
+	  note "$r is no longer doable -- required {$extra_req.kxxv}";
+	  # only do this (for now?) for a single extra required element
+	  
+	  # can we extend the formula to include the new number using
+	  #   an identity relation?  If R is the original formula, and 
+	  #   w is the new number:
+	  #     R+(w-F) R-(w-F) where F is 1,3,5 cubes which evaluate to w (needs +,- or -,-)
+	  #     R/(w/F) R*(w/F) where F is 1,3,5 cubes which evaluate to w (needs /,* or /,/)
+	  #     (w/F)@R R^(w/F) where F is 1,3,5 cubes which evaluate to w (needs /,@ or ^,/)
 
+	  # can we extend the formula to include a new operator using
+	  #   an identity relation?  If R is the original formula, and
+	  #   o is the new operator:
+	  #     RoF      where F is 1,3,5 cubes which evaluate to 0 for o = +,-
+	  #     RoF, FoR where F is 1,3,5 cubes which evaluate to 1 for o = *,/,^,@
+
+	}
+      }
+      note $B.display if %not_doable.elems > 0;
       self.generate_solutions($B) unless (%still_doable.elems>0);
     }
     
@@ -119,31 +156,33 @@ class Player {
 
   # for choose_move, we are guaranteed to only have valid, doable solutions in our current solution_list
   method choose_move(Board $B) {
-    my Board_Solver $BS .= new($B);
     
     unless (self.solution_found) { note "***I challenge the bluff -- no solution"; return Nil }  # this shouldn't actually happen here
-    
+
+    my Board_Solver $BS .= new($B);
+
     for self.solution_list -> $rpn {
       if $BS.on-board_solution($rpn) {
-	note "***I win:  $rpn, or {$rpn.aos}, is already on the board";
+	note "***I win:  {$rpn.aos} is already on the board";
 	return Nil;
       }
       my $go_out_cube=$BS.go-out_check($rpn);
       if ($go_out_cube.defined) {
-	note "***I win:  I can construct $rpn, or {$rpn.aos}, by bringing $go_out_cube to the Solution";
+	note "***I win:  I can construct {$rpn.aos} by bringing $go_out_cube to the Solution";
 	return Nil;
       }
     }
 
     # not done yet -- find a good play
-    return self.crazy_move($B) if (^100).pick < 10;    # make probability a Player parameter, and make interface nicer
+    return self.crazy_move($B) if chance(0.1);    # make probability a Player parameter, and make interface nicer
 
     # okay--really, now find a good play
-    my $target_rpn = self.target_rpn($B);  note "I'm working towards $target_rpn";
+    # would like to target destruction (culling) of competing rpn's if possible.
+    my $target_rpn = self.target_rpn($B);  note "I'm working towards {$target_rpn.aos}";
     my $pos_options = $BS.cubes-to-go_for($target_rpn);
     if ($pos_options.total>2) { # can consider a move to req or perm -- won't cause a "go-out" for other player
       my $cube=$pos_options.roll;
-      if ((^100).pick > 30) {
+      if (chance(0.75)) {
 	say "***I'm moving $cube to required";
 	$B.move_to_required($cube);
       } else {  # randomly make a potentially sub-optimal move which nevertheless adds complexity
@@ -168,95 +207,26 @@ class Player {
 
   method crazy_move(Board $B) {
     my $cube=$B.unused.roll;
-    note "***I'm crazily moving $cube to forbidden";  # could move it anywhere, not just forbidden...
-    $B.move_to_forbidden($cube);
+    if (chance(0.75)) {
+      note "***I'm crazily moving $cube to forbidden"; 
+      $B.move_to_forbidden($cube);
+    } else {
+      note "***I'm crazily moving $cube to required"; 
+      $B.move_to_required($cube);
+    }
     return self;
   }
 
   method target_rpn(Board $B) {
-    # should target rpn which uses permitted, since opponent might, all things the same, use a longer rpn
+    # should target rpn which uses permitted, since opponent might, all things the same, use a shorter rpn
     sub target_fn($a) { ((Bag.new($a.list) (-) $B.R) (-) $B.P).total }
-    sub target_sort($a,$b) { ($b.Str.chars <=> $a.Str.chars) or (&target_fn($a) <=> &target_fn($b)) }
+    sub target_sort($a,$b) { ($a.Str.chars <=> $b.Str.chars) or (&target_fn($a) <=> &target_fn($b)) }
     self.solution_list.sort( &target_sort ).[0];
   }
-  
-  method computed(Board $B, $max_cubes_in?) {
-    my $nr = +@[$B.required];
-    my $max_cubes = $max_cubes_in // max($nr+(1-($nr%2)),self.solution_list.map({ $_.Str.chars }).max,3);   note "computed with nr=$nr, max_cubes=$max_cubes";
-
-    my Board_Solver $BS .= new($B);
-    
-    # once in awhile, grab a longer solution
-    if ( (^100).pick > 90 ) {
-      $BS.calculate_solutions($max_cubes+2);
-      for $BS.solution_list -> $rpn { self.save_solution($rpn) }
-    }
 
     # need to work out bonus move for computer, triggered when forbidden move is available
-    # and number of unused cubes on board module number of players is not 1.
-    
-    # need to check permitted+required+1 from unused to make sure we aren't a single 
-    # cube away from a solution -- do a recalculation to make sure opponent isn't about
-    # to go out.  Maybe only need to do this in the scenario where haven't got a "required" move.
-    
-    # current solutions still valid?
-    my @Go_Out_Cubes=($B.required.Bag (+) $B.permitted.Bag).kxxv;  # + one from the board
- # note "go_out_cubes=@Go_Out_Cubes";    
-    loop:  
-    my @solutions=self.solution_list;
- # note "old solutions were {@solutions.join("  ")}";
-    @solutions=filter_solutions_required(@solutions,$B.required.Bag);  # note "after filtering by required:  {@solutions.join("  ")}";
-    for $B.unused.Set {   # note "checking for unused item cube $_";  note "available will be {$Go_Out_Cubes.Bag (+) $_.Bag}";
-      my @go_out=filter_solutions_usable(@solutions,@Go_Out_Cubes.Bag (+) $_.Bag);
-      if (@go_out.elems > 0) {
-	say "I win!  I can go out with solution(s):\n{@go_out.map({$_.aos}).join("  ")}";
-	return Nil;
-      }
-    }
-    @solutions=filter_solutions_usable(@solutions,$B.available.Bag);
-    if (@solutions) {  # solution still exists; find required or irrelevant cubes
-# note "solution still exists with {$B.available} for: {@solutions.join("  ")}";      
-      if ( (^100).pick < 10) {  # do something crazy about 10% of the time
-	  my $cube=$B.unused.roll;
-	  say "***I'm crazily moving $cube to forbidden";
-      	  $B.move_to_forbidden($cube);
-	  return self;
-      }
-      # should target rpn which uses permitted, since opponent might, all things the same, use a longer rpn
-      sub target_fn($a) { ((Bag.new($a.list) (-) $B.required.Bag) (-) $B.permitted).total }
-      sub target_sort($a,$b) { ($b.Str.chars <=> $a.Str.chars) or (&target_fn($a) <=> &target_fn($b)) }
-      my $target_rpn = @solutions.sort( &target_sort ).[0];
-#      my ($target_rpn) = shuffle @solutions;  # solution we're working towards
-note "I'm working towards $target_rpn";      
-      my $target_rpn_cubes = Bag.new($target_rpn.list);
-      # need to qualify $req_options by what's actually unused!  (could already be in permitted, so not unused)
-      my $req_options = ($target_rpn_cubes (-) $B.required.Bag) (&) $B.unused.Bag;
-      my $n_from_solve=(($target_rpn_cubes (-) $B.required.Bag) (-) $B.permitted).total;  # n left to solve
-      if (($req_options.total > 0) && ($n_from_solve > 2)) {  # can -->req'd if >2 to solve (no go out) & non-empty req'd options
-	my $cube=$req_options.roll;
-	assert { $B.unused.Bag{$cube} > 0 }, "cube $cube is actually still unused";
-	if ((^100).pick > 30) {  
-	  say "***I'm moving $cube to required";
-	  $B.move_to_required($cube);
-	} else {  # randomly make a potentially sub-optimal move which nevertheless adds complexity
-	  say "***I'm moving $cube to permitted";
-	  $B.move_to_permitted($cube);       # this can be a mistake, if it enables a different solution than $target_rpn
-	} 
-      } else {
-	my $excess=$B.unused.Bag (-) $target_rpn_cubes;
-	note "excess cubes for $target_rpn are {$excess.kxxv}";
-	if ($excess.total > 0) {
-	  my $cube=$excess.roll;
-	  say "***I'm moving excess $cube to forbidden";
-	  $B.move_to_forbidden($cube);
-	} else {  # no forbidden cubes -- put in permitted
-	  my $cube=$B.unused.roll;
-	  say "***I'm moving remaining cube $cube to permitted";
-	  $B.move_to_permitted($B.unused.roll);
-	}
-      }
-    } else {  # have to now go and find new solutions
-      note "Recalculating solutions with two more cubes (will be {$max_cubes+2})";
+    # and number of unused cubes on board modulo number of players is not 1.
+
       # not sure any of the following is useful -- reassess later -- might be able "build" new solution from missing number / op?
 =begin pod
       # before we clear out the solutions and start over, can we build on our current solution list?
@@ -311,18 +281,6 @@ note "I'm working towards $target_rpn";
 	}
       }
 =end pod
-      self.clear_solutions;
-      # try to construct the goal with additional cubes for the equation
-      die "I challenge you;  I can't see the solution" if $max_cubes+2 > $B.available.Bag.total;  # don't die, but get RPN, eval, then maybe concede
-      $BS.calculate_solutions($max_cubes+2);
-      for $BS.solution_list -> $rpn { self.save_solution($rpn) }
-      
-      return self.computed($B,$max_cubes+2);
-    }
-    
-    self;
-    
-  } # method computed
 
 }  # end class Player
 

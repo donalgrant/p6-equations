@@ -39,5 +39,11 @@ ok(  @original_list eqv @list,           "shuffle didn't alter the order of orig
 is( min(5,9,3,234,-2,0,3), -2,   "min on array" );
 is( max(5,9,3,234,-2,0,3), 234,  "max on array" );
 
+my $x=0;
+my $y=0;
+for (^10000) { $x++ if chance(0.1); $y++ if chance(0.8) }
+
+ok( 800 <= $x <= 1200, "Odds are reasonable ($x out of 10000) for 10% chance" );
+ok( 7500 <= $y <= 8500, "Odds are reasonable ($y out of 10000) for 80% chance" );
 
 done-testing;

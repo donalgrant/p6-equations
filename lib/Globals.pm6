@@ -22,6 +22,7 @@ sub shuffle_in_place ( @array ) is export {
 }
 sub shuffle ( @array ) is export { my @c=@array; shuffle_in_place @c; return @c }
 
+sub chance( Numeric $x ) is export { return rand < $x }
 
 sub ops_slots($n) is export {
   return ['1'] if $n==1;

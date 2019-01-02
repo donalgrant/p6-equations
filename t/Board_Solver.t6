@@ -58,6 +58,8 @@ nok $BS.doable_solution( RPN.new('23^1/') ),       'unavaible solution even thou
 ok  $BS.valid_solution(  RPN.new('23^') ), 'solution violating required cubes can be valid';
 nok $BS.doable_solution( RPN.new('23^') ), 'solution violating required cubes is not doable';
 
+ok  $BS.cubes-missing_for( RPN.new('252-^') ) == qw{ 5 }.Bag, "solution with cubes which aren't available";
+
 my RPN $rpn .= new('231*^33-2*+');
 
 ok  $BS.valid_solution(  $rpn ), 'complicated but valid solution';

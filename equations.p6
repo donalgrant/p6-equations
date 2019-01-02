@@ -28,7 +28,9 @@ msg $B.display;
 
 my $P1=Player.new;
 my $P2=Player.new;
-my $g=$P1.choose_goal($B,2);
+my $P3=Player.new;
+
+my $g=$P1.choose_goal($B);
 
 assert { $g.defined }, "Found a goal from {$B.display}";
 
@@ -43,9 +45,9 @@ note "Starting Board:\n{$B.display}";
 
 loop {
 
-#  last unless $P2.manual($B);    note $B.display; # human player's move
-  note "Player 2 sees Board\n{$B.display}"; last unless $P2.get_targets($B); 
-  note "Player 1 sees Board\n{$B.display}"; last unless $P1.get_targets($B);  
+                    last unless $P3.manual($B); 
+  note "Player 2:"; last unless $P2.turn($B); 
+  note "Player 1:"; last unless $P1.turn($B);  
 
 }
 

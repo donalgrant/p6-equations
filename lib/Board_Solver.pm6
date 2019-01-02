@@ -32,6 +32,24 @@ class Board_Solver {
   method doable_solution(   RPN $rpn ) { my $b=$rpn.Bag; ( $b (<=) ( $!B.allowed ) ) and ( ($!B.R) (<=) $b ) }
   method on-board_solution( RPN $rpn ) { my $b=$rpn.Bag; ( $b (<=) ( $!B.R (+) $!B.P ) ) and ( $b (>=) $!B.R ) }
 
+  # consolidate the following two with an internal method
+  
+  # bag of cubes in RPN which are not available anywhere on the board
+  method cubes-missing_for( RPN $rpn ) {
+    my BagHash $b=$rpn.BagHash; 
+    my BagHash $a=$!B.allowed.BagHash;
+    for $b.kxxv { if ($a{$_} > 0) { $a{$_}--; $b{$_}-- } }
+    return $b;
+  }
+
+  # bag of cubes in required which don't appear in the RPN
+  method req-not-in( RPN $rpn ) {
+    my BagHash $b=$rpn.BagHash;
+    my BagHash $r=$!B.R.clone;
+    for $r.kxxv { if ($b{$_} > 0) { $b{$_}--; $r{$_}-- } }
+    return $r;
+  }
+  
   # Bag of RPN cubes not yet in required and in unused
   method cubes-to-go_for(   RPN $rpn ) {
     my $b=$rpn.Bag;
@@ -55,7 +73,7 @@ class Board_Solver {
   }
   
   method calculate_solutions($ncubes,:$max_solutions=50000) {  # ncubes is maximum number of cubes to use
-    note "calculate_solutions for ncubes=$ncubes with board:\n{$!B.display}";
+    note "calculate_solutions for ncubes=$ncubes";
     die "Goal must be set before calculating solutions" unless $!B.goal;
     die "Number of cubes in a solution must be odd!" if $ncubes %% 2;
     my Bag $bag .= new( $!B.available );
@@ -72,7 +90,7 @@ class Board_Solver {
 #    note "po=[{@po.map({ $_.join(',') }).join('],[')}]";
 #    note "ops_slots={@ops_slots.join(',')}";
     my $n_solutions= @pn * @po * @ops_slots;    # numeric context -- product of array sizes
-    note "n_solutions=$n_solutions";
+#    note "n_solutions=$n_solutions";
     die "issue with get_tuples? pn={@pn}, po={@po}; ops_slots={@ops_slots}" unless $n_solutions>0;
     if ($n_solutions>$max_solutions) {
       my $reduce_factor=min( 4.0, ($n_solutions/$max_solutions)**(1.0/3.0) ); 
@@ -84,7 +102,7 @@ class Board_Solver {
       @po       =choose_n $npo, @po;
       @ops_slots=choose_n $nsl, @ops_slots;
       $n_solutions= @pn * @po* @ops_slots;
-      note "after sub-select, n_solutions=$n_solutions";
+#      note "after sub-select, n_solutions=$n_solutions";
     }
     my $i=0;
     for @pn -> $pn {  #note "working with pn={$pn.join(',')}";
