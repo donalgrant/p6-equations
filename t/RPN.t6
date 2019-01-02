@@ -33,6 +33,8 @@ isa-ok $rpn, RPN;
 is( $rpn.rpn, '76+', "public method rpn for RPN");
 is( $rpn.Numeric, 13, "simple addition" );
 
+ok( $rpn.Bag == Bag.new('76+'.comb), 'RPN converts to Bag' );
+
 is( RPN.new("76+").Numeric, 13, "cached" );
 is( RPN.new('76*').Numeric, 42, "simple multiplication" );
 is( RPN.new('82/').Numeric, 4,  "simple division" );
@@ -51,6 +53,7 @@ is( ~$rpn, "76+", "operator overloading for string" );
 
 is( rpn_to_aos('76+'), '7+6', "simple rpn_to_aos conversion" );
 is( rpn_to_aos('98+7-6*5/2^'), '((((9+8)-7)*6)/5)^2', "longer rpn_to_aos conversion" );
+is( rpn_to_aos('123456/////'), '1/(2/(3/(4/(5/6))))', "long stacked rpn_to_aos" );
 
 is( $rpn.aos(), '7+6', "aos version" );
 

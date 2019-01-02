@@ -7,7 +7,7 @@ class RPN {
 
   has $.rpn;
 
-  method new ($rpn) { self.bless(:$rpn) }
+  method new ($rpn) { rpn_value($rpn) ?? self.bless(:$rpn) !! Nil }
   method new_from_aos ($aos) {
     my $rpn=aos_to_rpn($aos);
     return Nil unless $rpn.defined;
@@ -18,8 +18,9 @@ class RPN {
   method aos     { return rpn_to_aos($!rpn) }  
   method list    { $!rpn.comb }
 
-  method Numeric { rpn_value($!rpn) }
-  method Str     { self.display     }
+  method Numeric { rpn_value($!rpn)  }
+  method Str     { self.display      }
+  method Bag     { self.Str.comb.Bag }
 
 }
 
@@ -77,12 +78,12 @@ sub rpn_value ($rpn) is export {
 # in Perl5 profiling, this was faster than using given/when or $opssubs{$op}->($n1,$n2)
 
 sub calc ($n1,$op,$n2) is export {
-  return $n1+$n2                                                        if $op eq '+';
-  return $n1-$n2                                                        if $op eq '-';
-  return $n1*$n2                                                        if $op eq '*';
-  return ( ($n2==0)                          ?? Nil !! $n1/$n2        ) if $op eq '/';
-  return ( ($n1==0 and $n2 < 0)              ?? Nil !! $n1**$n2       ) if $op eq '^';
-  return ( ($n1==0 or ($n2 < 0 and $n1 > 0)) ?? Nil !! $n2**(1.0/$n1) ) if $op eq '@';
+  return $n1+$n2                                                          if $op eq '+';
+  return $n1-$n2                                                          if $op eq '-';
+  return $n1*$n2                                                          if $op eq '*';
+  return ( ($n2==0)                            ?? Nil !! $n1/$n2        ) if $op eq '/';
+  return ( ($n1==0 and $n2 < 0) or ($n2 > 100) ?? Nil !! $n1**$n2       ) if $op eq '^';  # should be abs($n2)
+  return ( ($n1==0 or ($n2 < 0 and $n1 > 0))   ?? Nil !! $n2**(1.0/$n1) ) if $op eq '@';  # should do more range checks
   quit "Unrecognized operator:  $op";
 }
 
@@ -111,13 +112,13 @@ sub aos_to_rpn ($aos) is export {
 sub _rpn_array_to_aos (@R) {
   return @R[0] if @R.elems==1;
   my $i=2;
-  while ( !(@R[$i]~~/ <op> /) ) { $i++; last if $i>@R.elems }  # should return error -- last token must be op!
+  while ( !(@R[$i]~~/^ <op> $/) ) { $i++; last if $i>@R.elems }  # should return error -- last token must be op!
   my $s1=(@R[$i-2]~~/ <close_p> \s* $ /) ?? '' !! '';          # for now, always no space
   my $s2=(@R[$i-1]~~/^ \s* <open_p>   /) ?? '' !! '';          # ...on both sides
-  my $e="@R[$i-2]$s1@R[$i]$s2@R[$i-1]";
+  my $e=@R[$i-2]~$s1~@R[$i]~$s2~@R[$i-1]; 
   my @x=@R.elems>3 ?? "($e)" !! $e;
-  unshift @x, |@R[0..$i-3] if $i > 2;
-  push @x, |@R[$i+1..@R.end]  if $i < @R.end;
+  @x.unshift(|@R[0..$i-3]) if $i > 2;
+  @x.append(@R[$i+1..@R.end])  if $i < @R.end;
   return _rpn_array_to_aos(@x);
 }
 
