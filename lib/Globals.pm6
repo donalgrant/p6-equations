@@ -25,6 +25,22 @@ module Globals {
   sub shuffle ( @array ) is export { my @c=@array; shuffle_in_place @c; return @c }
   
   sub chance( Numeric $x ) is export { return rand < $x }
+
+  sub p5-deref1( $p5ref ) is export {
+    my @s;
+    for @$p5ref -> $a { push @s, @$a }
+    return @s;
+  }
+  
+  sub p5-deref2( $p5ref ) is export {
+    my @s;
+    for @$p5ref -> $a {
+      my @t;
+      for @$a -> $b { push @t, @$b }
+      push @s, @t;
+    }
+    return @s;
+  }
   
   sub ops_slots($n) is export {
     return ['1'] if $n==1;
