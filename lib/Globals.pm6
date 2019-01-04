@@ -41,7 +41,21 @@ module Globals {
     }
     return @s;
   }
-  
+
+  # compute a string corresponding to the number of operators allowable in an RPN expression
+  # at each position defined by the digits in the string, where the first position is after
+  # the second digit.  There is always one fewer operator than the number of digits.
+  # For example:
+  #
+  #   32+548//+   (3+2) + (5/(4/8))    ops_slots = '1003'
+  #   32548+//+   3 + (2/(5/(4+8)))    ops_slots = '0004'
+  #
+  # In an RPN expression ops-slot, the digit in each slot must be <= the position of the slot;
+  # and the total of the digits in the ops-slot equals the number of ops-slots.  Finally,
+  # the final ops-slot digit must always be >=1.
+  #
+  # the routine returns a list of all possible ops-slot strings for the length of the ops-slot string
+
   sub ops_slots($n) is export {
     return ['1'] if $n==1;
     return ['11','02'] if $n==2;
@@ -49,16 +63,16 @@ module Globals {
     for 2..$n-1 -> $slot {
       my @new_options;
       for @options -> $this_option {
-	my $naccum=$slot - $this_option.comb.join('+').EVAL;
+	my $naccum=min($slot, ($n-1) - [+] $this_option.comb);  # potentially available positions
 	my @accum_options;
 	for 0..$naccum -> $n_in_slot {
 	  @accum_options.push("$this_option$n_in_slot");
 	}
-	@new_options.push(|@accum_options);
+	@new_options.append(@accum_options);
       }
       @options=@new_options;
     }
-    @options.map( { $_~($n-$_.comb.join('+').EVAL) } );
+    @options.map( { $_~($n - [+] $_.comb) } );
   }
   
   sub unique_tuples(@a) is export { @a.unique(:as( *.join('') )) }
@@ -67,6 +81,7 @@ module Globals {
   
   sub get_tuples($n,Bag $src,Bag $req) is export { 
     return () unless $src (>=) $req;
+    return () unless $n >= $req.total;   # can't generate tuples w/length less than # of req cubes
     my $remain=($src (-) $req).BagHash;  
     my @req_list=$req.kxxv;
     #  note "for $n cubes, src={$src.kxxv}, req={$req.kxxv}";
@@ -77,9 +92,9 @@ module Globals {
       my @temp=[combinations( $[ $remain.kxxv ], $n - @req_list ) ];  # note "temp=[{@temp.map({ $_.join(',') }).join('],[')}]"; note "type of [0] is {@temp[0].^name}";
       #   note "truth of temp[0] ~~ /Array/:  {so @temp[0].^name ~~ /Array/}";
       if (@temp[0].^name~~/ Array | List /) {  # array of arrays
-	@comb=unique_tuples @temp.map({ Array.new.append(|@req_list,|$_) });  # note "array of arrays";
+	@comb=unique_tuples @temp.map({ Array.new.append(|@req_list,|$_) }); #  note "array of arrays";
       } else { # just an array
-	@comb[0]=Array.new.append(|@req_list,|@temp); #  note "just an array; comb=[{@comb.map({ $_.join(',') }).join('],[')}]";
+	@comb[0]=Array.new.append(|@req_list,|@temp);  #  note "just an array; comb=[{@comb.map({ $_.join(',') }).join('],[')}]";
       }
     }
     # now for each element of @comb, generate all the permutations and add to the total list
@@ -95,6 +110,7 @@ module Globals {
   }
   
   sub choose_n($n,@c) is export {
+    die "choose_n range should be 1<=n<={@c.elems}" unless $n>0;
     return @c if $n>=@c.elems;
     for 0..$n-1 { @c[$_,($_+1..@c.end).pick].=reverse }
     @c[0..$n-1];
