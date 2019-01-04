@@ -27,7 +27,7 @@ module Globals {
   sub chance( Numeric $x ) is export { return rand < $x }
 
   sub p5-deref1( $p5ref ) is export {
-    my @s;
+    my @s; 
     for @$p5ref -> $a { push @s, @$a }
     return @s;
   }
@@ -82,31 +82,23 @@ module Globals {
   sub get_tuples($n,Bag $src,Bag $req) is export { 
     return () unless $src (>=) $req;
     return () unless $n >= $req.total;   # can't generate tuples w/length less than # of req cubes
-    my $remain=($src (-) $req).BagHash;  
+    my $remain=($src (-) $req).BagHash;
     my @req_list=$req.kxxv;
-    #  note "for $n cubes, src={$src.kxxv}, req={$req.kxxv}";
-    #  note "$n vs {+@req_list} will generate combinations {[combinations( $[ $remain.kxxv ], $n - @req_list )].join(',')}";
     # this is tricky -- combinations will return an array of arrays unless there is only a single combination, in which case it's just an array
-    my @comb = $[ $req.kxxv ];
+    # single combination happens in case where number of elements to combine is the same as the number at a time for the combinations
+    my @comb;
     if ($n > @req_list) {
-      my @temp=[combinations( $[ $remain.kxxv ], $n - @req_list ) ];  # note "temp=[{@temp.map({ $_.join(',') }).join('],[')}]"; note "type of [0] is {@temp[0].^name}";
-      #   note "truth of temp[0] ~~ /Array/:  {so @temp[0].^name ~~ /Array/}";
-      if (@temp[0].^name~~/ Array | List /) {  # array of arrays
-	@comb=unique_tuples @temp.map({ Array.new.append(|@req_list,|$_) }); #  note "array of arrays";
-      } else { # just an array
-	@comb[0]=Array.new.append(|@req_list,|@temp);  #  note "just an array; comb=[{@comb.map({ $_.join(',') }).join('],[')}]";
+      if ($n-@req_list == $remain.total) {
+	@comb[0]=Array.new.append(@req_list).append([$remain.kxxv]);
+      } else {
+	my @temp=p5-deref1(combinations( $[ $remain.kxxv ], $n - @req_list )); 
+	@comb=unique_tuples @temp.map({ Array.new.append(@req_list).append(@$_) }); 
       }
-    }
+    } else { @comb = $[ $req.kxxv ] }
     # now for each element of @comb, generate all the permutations and add to the total list
-    #  note "number of combinations is {@comb.elems}; comb=[{@comb.map({ $_.join(',') }).join('],[')}]";
     my @perms;
-    for (@comb) { @perms.append(permutations( $_ )) }
-    #  note "number of permutation elements is {@perms.elems}; perms=[{@perms.map({ $_.join(',') }).join('],[')}]";
-    @perms=unique_tuples @perms;
-    #  note "after unique:   num elements  = {@perms.elems}; perms=[{@perms.map({ $_.join(',') }).join('],[')}]";
-    return @perms; 
-    #  note "will return [{ unique_tuples( @comb.map({ permutations($[ |$_ ]) }).flat ).map({ $_.join(',') }).join('],[') }]";
-    #  unique_tuples( @comb.map({ permutations($[ |$_ ]) }).flat );
+    for (@comb) { @perms.append(p5-deref1(permutations( $_ ))) }
+    return unique_tuples @perms;
   }
   
   sub choose_n($n,@c) is export {

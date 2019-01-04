@@ -171,21 +171,23 @@ dies-ok { choose_n(0,[ ^6 ]) },              "choose_n fails on n < 1";
 my $src=[ 1..4 ];
 my $req=[ 2, 3 ];
 
-is-deeply p5-deref1(get_tuples(1,$req.Bag,$src.Bag)).sort, (),           "req must be subset of src";
-is-deeply p5-deref1(get_tuples(1,$src.Bag,$req.Bag)).sort, (),           "get_tuples one at a time";
-is-deeply p5-deref1(get_tuples(2,$src.Bag,$req.Bag)).sort,
+is-deeply get_tuples(1,$req.Bag,$src.Bag).sort, (),           "req must be subset of src";
+is-deeply get_tuples(1,$src.Bag,$req.Bag).sort, (),           "get_tuples one at a time";
+is-deeply get_tuples(2,$src.Bag,$req.Bag).sort,
           [ [2,3], [3,2] ].sort,                                         "get_tuples two at a time";
 
-is-deeply p5-deref1(get_tuples(3,$src.Bag,$req.Bag)).sort,
+is-deeply get_tuples(3,$src.Bag,$req.Bag).sort,
           [ [1,2,3], [1,3,2], [2,1,3], [2,3,1], [3,1,2], [3,2,1],
 	    [2,3,4], [2,4,3], [3,2,4], [3,4,2], [4,2,3], [4,3,2] ].sort, "get_tuples three at a time";
 
-is-deeply p5-deref1(get_tuples(4,$src.Bag,$req.Bag)).sort,
+is-deeply get_tuples(4,$src.Bag,$req.Bag).sort,
           [ [1,2,3,4], [1,2,4,3], [1,3,2,4], [1,3,4,2],
 	    [1,4,2,3], [1,4,3,2], [2,1,3,4], [2,1,4,3],
 	    [2,3,1,4], [2,3,4,1], [2,4,1,3], [2,4,3,1],
 	    [3,1,2,4], [3,1,4,2], [3,2,1,4], [3,2,4,1],
 	    [3,4,1,2], [3,4,2,1], [4,1,2,3], [4,1,3,2],
 	    [4,2,1,3], [4,2,3,1], [4,3,1,2], [4,3,2,1] ].sort,           "get_tuples four at a time";
+
+# need tests for unique_tuples
 
 done-testing;
