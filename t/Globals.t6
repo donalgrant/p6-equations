@@ -190,4 +190,10 @@ is-deeply get_tuples(4,$src.Bag,$req.Bag).sort,
 
 # need tests for unique_tuples
 
+is-deeply unique_tuples(
+  [ [1,2,3], [1,3,2], [2,1,3], [1,3,2], [2,1,3] ]
+                              ).sort,
+  [ [1,2,3], [1,3,2], [2,1,3] ].sort,               "unique_tuples removes duplicates";
+
+
 done-testing;

@@ -27,19 +27,15 @@ module Globals {
   sub chance( Numeric $x ) is export { return rand < $x }
 
   sub p5-deref1( $p5ref ) is export {
-    my @s; 
-    for @$p5ref -> $a { push @s, @$a }
-    return @s;
+    [ gather { for @$p5ref -> $a { take @$a } } ]
   }
-  
+
   sub p5-deref2( $p5ref ) is export {
-    my @s;
-    for @$p5ref -> $a {
-      my @t;
-      for @$a -> $b { push @t, @$b }
-      push @s, @t;
-    }
-    return @s;
+    [ gather {
+	for @$p5ref -> $a {
+	  take [ gather { for @$a -> $b { take @$b } } ]
+	}
+      } ]
   }
 
   # compute a string corresponding to the number of operators allowable in an RPN expression
