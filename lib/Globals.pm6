@@ -52,23 +52,21 @@ module Globals {
   #
   # the routine returns a list of all possible ops-slot strings for the length of the ops-slot string
 
+  sub build_ops_slot_options($slot,$n,@options) {
+    gather {
+      for @options -> $this_option {
+	my $naccum=min($slot, ($n-1) - [+] $this_option.comb);  # potentially available positions
+	for 0..$naccum { take "$this_option$_" } 
+      }
+    }
+  }
+  
   sub ops_slots($n) is export {
     return ['1'] if $n==1;
     return ['11','02'] if $n==2;
-    my @options=['0', '1'];
-    for 2..$n-1 -> $slot {
-      my @new_options;
-      for @options -> $this_option {
-	my $naccum=min($slot, ($n-1) - [+] $this_option.comb);  # potentially available positions
-	my @accum_options;
-	for 0..$naccum -> $n_in_slot {
-	  @accum_options.push("$this_option$n_in_slot");
-	}
-	@new_options.append(@accum_options);
-      }
-      @options=@new_options;
-    }
-    @options.map( { $_~($n - [+] $_.comb) } );
+    my @options=['0', '1'];  # start list -- will build in next line
+    for 2..$n-1 -> $slot { @options=build_ops_slot_options($slot,$n,@options) }
+    @options.map( { $_~($n - [+] $_.comb) } );  # get last slot
   }
   
   sub unique_tuples(@a) is export { @a.unique(:as( *.join('') )) }
@@ -82,19 +80,21 @@ module Globals {
     my @req_list=$req.kxxv;
     # this is tricky -- combinations will return an array of arrays unless there is only a single combination, in which case it's just an array
     # single combination happens in case where number of elements to combine is the same as the number at a time for the combinations
-    my @comb;
-    if ($n > @req_list) {
-      if ($n-@req_list == $remain.total) {
-	@comb[0]=Array.new.append(@req_list).append([$remain.kxxv]);
-      } else {
-	my @temp=p5-deref1(combinations( $[ $remain.kxxv ], $n - @req_list )); 
-	@comb=unique_tuples @temp.map({ Array.new.append(@req_list).append(@$_) }); 
-      }
-    } else { @comb = $[ $req.kxxv ] }
-    # now for each element of @comb, generate all the permutations and add to the total list
-    my @perms;
-    for (@comb) { @perms.append(p5-deref1(permutations( $_ ))) }
-    return unique_tuples @perms;
+    my @comb = gather {
+      if ($n > @req_list) {
+	if ($n-@req_list == $remain.total) {
+	  take [ gather { @req_list.map({ take $_ }); [$remain.kxxv].map({ take $_ }) } ];
+	} else {
+	  unique_tuples(
+	    gather {
+	      p5-deref1(combinations( $[ $remain.kxxv ], $n - @req_list )).map({ take Array.new.append(@req_list).append(@$_) });
+	    }
+	  ).map({ take $_ });
+	}
+      } else { take $[ $req.kxxv ] }
+    }
+    # now for each element of @comb, generate all the permutations and add to the total list; return unique tuples
+    unique_tuples gather { for (@comb) { p5-deref1(permutations( $_ )).map({ take $_ }) } }
   }
   
   sub choose_n($n,@c) is export {
