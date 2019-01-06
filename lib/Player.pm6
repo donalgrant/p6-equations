@@ -58,9 +58,20 @@ class Player {
     my ($move,$section);
 
     put $B.display();
-    repeat { $move    = prompt "Cube:  " } until $B.unused.Bag{$move} > 0;
-    repeat { $section = prompt "To (R(equired) P(ermitted) F(orbidden) B(onus) E(quation):  " }
-      until $section ~~ m:i/^<[RPFEB]>/;
+    repeat { $move    = prompt "Cube or H(int):  " } until ($move ~~ m:i/<[H]>/) or ($B.unused.Bag{$move} > 0);
+    if ($move ~~ m:i/<[H]>/) {
+	self.generate_solutions($B) unless (%!S.elems>0);
+	my Board_Solver $BS .= new($B);
+	my @hint_list = self.solution_list.grep({ $BS.doable_solution($_) });
+	self.generate_solutions($B) unless @hint_list.elems>0;
+	if (@hint_list.elems>0) {
+	  say "Example Solution:  {@hint_list.roll.aos}";
+	} else { say "I have no idea!" }
+	return self.manual($B,$bonus_taken);
+    }
+    
+    repeat { $section = prompt "To (R(equired) P(ermitted) F(orbidden) B(onus) E(quation) H(int):  " }
+      until $section ~~ m:i/^<[RPFHEB]>/;
 
     given ($section.uc) {
       when ('R') {  $B.move_to_required($move) }
@@ -107,7 +118,7 @@ class Player {
 
     if (%still_doable.elems>0) {
       # could possibly extend doable solutions here via add / replace
-      # choose a move based on the current list of valid solutions
+      # choose a move based on the current list of valid solutions.
       # only worth doing if we then rule out the original solution
       # by requiring something from the new one
       
@@ -117,16 +128,9 @@ class Player {
 	my $missing = $BS.cubes-missing_for( RPN.new($r) );
 	if ($missing.elems > 0) {
 	  note "{RPN.new($r).aos} is no longer doable -- needs {$missing.kxxv}";
-	  # can we construct a missing number with a 3 or 5 element equation
-	  #     from available cubes not used by RPN?
-	  
-	  # can we construct a missing operator with an equation representing
-	  #     is inverse?  (can't do it for '-' and '/')
-	  #   x+w --> x-(y-z)   where w = z-y
-	  #   x*w --> x/(y/z)   where w = z/y
-	  #   x^w --> (y/z)@x   where w = z/y
-	  #   w@x --> (x^(y/z)) where w = z/y
-	  
+	  if (self.find_replacement($B,$missing,RPN.new($r))) {  # add new doable solutions
+	    for self.solution_list -> $rpn { %still_doable{~$rpn} = +$rpn if $BS.doable_solution($rpn) }
+	  }
 	} else { # must be a new required which is not part of the RPN
 	  my $extra_req = $BS.req-not-in( RPN.new($r) );
 	  note "{RPN.new($r).aos} is no longer doable -- required {$extra_req.kxxv}";
@@ -154,7 +158,48 @@ class Player {
     self.filter_solutions($B); 
     self.choose_move($B);  
   }
-
+  
+  method find_replacement(Board $B, BagHash $missing, RPN $rpn) {
+    return False unless $B.R (<=) $rpn.Bag;   # must be able to use all required cubes
+    if ($missing.total>1) {
+      note "find_replacement for $rpn is missing ({$missing.kxxv}) more than one cube";
+      return False;
+    }
+    my ($cube)=$missing.kxxv;
+    if ($cube~~/<digit>/) {
+      # can we construct a missing number with a 3 or 5 element equation
+      #     from available cubes not used by RPN?	
+      # Set up a Board_Solver to try to find missing cube
+      my Bag $b = ($missing (+) $B.allowed) (-) ($rpn.Bag (-) $missing);  # add missing for goal
+#      note "Setting up a Board with cubes {$b.kxxv}, which should include missing cube $cube";
+      my Board_Solver $BS .= new(Board.new($b).move_to_goal($cube));
+      for 3,5 -> $ncubes {
+	$BS.calculate_solutions($ncubes);
+	if ($BS.solution_found) {
+	  for $BS.solution_list -> $r {
+#	    note "$ncubes cube solution:  $r";
+	    # create a new RPN by replacing in the original rpn
+	    my $new_rpn = $rpn.Str;  $new_rpn~~s/$cube/{~$r}/;
+	    note "saving new solution:  $rpn --> $new_rpn";
+	    self.save_solution(RPN.new($new_rpn));
+	  }
+	  return True;
+	}
+      }
+      return False;
+    }
+    note "missing cube $cube is an operator";
+    return False if $cube~~/<[-/]>/;
+    # can we construct a missing operator with an equation representing
+    #     is inverse?  (can't do it for '-' and '/')
+    #   x+w --> x-(y-z)   where w = z-y
+    #   x*w --> x/(y/z)   where w = z/y
+    #   x^w --> (y/z)@x   where w = z/y
+    #   w@x --> (x^(y/z)) where w = z/y
+    
+    return False;
+  }
+  
   # for choose_move, we are guaranteed to only have valid, doable solutions in our current solution_list
   method choose_move(Board $B) {
     
