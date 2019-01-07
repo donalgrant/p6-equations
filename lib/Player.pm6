@@ -121,7 +121,18 @@ class Player {
       # choose a move based on the current list of valid solutions.
       # only worth doing if we then rule out the original solution
       # by requiring something from the new one
-      
+      for %still_doable.keys -> $r {
+	if (chance(0.1)) {  # make a parameter
+	  for $r.comb -> $cube {
+	    if (self.find_replacement($B,BagHash.new($cube),RPN.new($r))) {  # add new doable solutions
+	      for self.solution_list -> $rpn { %still_doable{~$rpn} = +$rpn if $BS.doable_solution($rpn) }
+	      note "***I'm moving $cube to forbidden (because I can replace it in $r)";
+	      $B.move_to_forbidden($cube);  # get rid of the cube we can replace -- that's the move
+	      return self;
+	    }
+	  }
+	}
+      }
     } else {
       # can we make some solutions doable by extend / replace, or both?
       for %not_doable.keys -> $r {
@@ -180,7 +191,7 @@ class Player {
 #	    note "$ncubes cube solution:  $r";
 	    # create a new RPN by replacing in the original rpn
 	    my $new_rpn = $rpn.Str;  $new_rpn~~s/$cube/{~$r}/;
-	    note "saving new solution:  $rpn --> $new_rpn";
+#	    note "saving new solution:  $rpn --> $new_rpn";
 	    self.save_solution(RPN.new($new_rpn));
 	  }
 	  return True;
@@ -188,7 +199,7 @@ class Player {
       }
       return False;
     }
-    note "missing cube $cube is an operator";
+#    note "missing cube $cube is an operator";
     return False if $cube~~/<[-/]>/;
     # can we construct a missing operator with an equation representing
     #     is inverse?  (can't do it for '-' and '/')

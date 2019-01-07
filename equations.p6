@@ -45,8 +45,8 @@ note "Starting Board:\n{$B.display}";
 
 loop {
 
-                    last unless $P3.manual($B); 
-#  note "Player 2:"; last unless $P2.turn($B); 
+#                    last unless $P3.manual($B); 
+  note "Player 2:"; last unless $P2.turn($B); 
   note "Player 1:"; last unless $P1.turn($B);  
 
 }
