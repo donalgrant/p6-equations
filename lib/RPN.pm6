@@ -64,7 +64,7 @@ sub rpn_value ($rpn) is export {
   my @stack;
   my $bos;
   while (+@list and push @stack, $bos=shift @list) {
-    next if %NUM{$bos}.defined;  # fastest way to do matching -- much better than =~/\d/
+    next if %NUM{$bos}.defined;  # fastest way to do matching -- much better than ~~/\d/
     my $op=@stack.pop;
     my $n2=@stack.pop;
     my $n1=@stack.pop;

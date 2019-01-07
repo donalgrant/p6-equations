@@ -181,10 +181,12 @@ class Player {
       # can we construct a missing number with a 3 or 5 element equation
       #     from available cubes not used by RPN?	
       # Set up a Board_Solver to try to find missing cube
-      my Bag $b = ($missing (+) $B.allowed) (-) ($rpn.Bag (-) $missing);  # add missing for goal
+#      note "creating a bag from missing={$missing.kxxv}; allowed={$B.allowed.kxxv}; rpn={$rpn.Bag.kxxv}";
+#      note "bag sums are:  missing+allowed={($missing (+) $B.allowed).kxxv}; rpn-missing={($rpn.Bag (-) $missing).kxxv}";
+      my BagHash $b = ($missing (+) $B.allowed) (-) ($rpn.Bag (-) $missing);  # add missing for goal
 #      note "Setting up a Board with cubes {$b.kxxv}, which should include missing cube $cube";
       my Board_Solver $BS .= new(Board.new($b).move_to_goal($cube));
-      for 3,5 -> $ncubes {
+      for 3,5 -> $ncubes {  # no need for 1, otherwise not really a replacement!
 	$BS.calculate_solutions($ncubes);
 	if ($BS.solution_found) {
 	  for $BS.solution_list -> $r {
