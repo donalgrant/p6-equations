@@ -19,7 +19,7 @@ class Player {
   has $.extend_solutions  is rw;
   has $.force_required    is rw;
 
-  method TWEAK { self.default_parms }
+  submethod TWEAK { self.default_parms }
   
   method default_parms {
     $!crazy_moves=0.05;
