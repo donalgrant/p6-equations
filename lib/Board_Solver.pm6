@@ -102,16 +102,16 @@ class Board_Solver {
       @po       =choose_n $npo, @po;
       @ops_slots=choose_n $nsl, @ops_slots;
       $n_solutions= @pn * @po* @ops_slots;
-#      note "after sub-select, n_solutions=$n_solutions";
+      note "after sub-select, n_solutions=$n_solutions";
     }
     my $i=0;
-    for @pn -> $pn {  #note "working with pn={$pn.join(',')}";
-      for @po -> $po { #note "working with po={$po.join(',')}";
+    for @pn -> $pn {  # note "working with pn={$pn.join(',')}";
+      for @po -> $po { # note "working with po={$po.join(',')}";
         for @ops_slots -> $slot {  # now construct this RPN
-# note "constructing RPN for pn={$pn.join(',')}; po={$po.join(',')}; slot=$slot";
+#	  note "constructing RPN for pn={$pn.join(',')}; po={$po.join(',')}; slot=$slot";
 	  my ($ipn,$ipo)=(0,0);
 	  my $x=$pn[$ipn++];
-	  for $slot.comb -> $s {  # note "inner block:  s=$s, x=$x, ipn=$ipn, ipo=$ipo, pn={$pn.join(',')}, po={$po.join(',')}";
+	  for $slot.comb -> $s { #  note "inner block:  s=$s, x=$x, ipn=$ipn, ipo=$ipo, pn={$pn.join(',')}, po={$po.join(',')}";
 	    $x~=$pn[$ipn++];
 	    $x~=$po[$ipo++] for (1..$s);
 	  }

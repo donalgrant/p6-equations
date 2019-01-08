@@ -47,15 +47,16 @@ module Globals {
   #   32548+//+   3 + (2/(5/(4+8)))    ops_slots = '0004'
   #
   # In an RPN expression ops-slot, the digit in each slot must be <= the position of the slot;
-  # and the total of the digits in the ops-slot equals the number of ops-slots.  Finally,
-  # the final ops-slot digit must always be >=1.
+  # and the total of the digits in the ops-slot equals the number of ops-slots.  At every slot,
+  # the cumulative number of ops must be < the number of digits, i.e., less than or equal to
+  # the slot number.  Finally, the final ops-slot digit must always be >=1.
   #
   # the routine returns a list of all possible ops-slot strings for the length of the ops-slot string
 
   sub build_ops_slot_options($slot,$n,@options) {
     gather {
       for @options -> $this_option {
-	my $naccum=min($slot, ($n-1) - [+] $this_option.comb);  # potentially available positions
+	my $naccum=$slot - [+] $this_option.comb;  # potentially available operators
 	for 0..$naccum { take "$this_option$_" } 
       }
     }

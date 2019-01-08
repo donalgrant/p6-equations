@@ -264,7 +264,7 @@ class Player {
   # for choose_move, we are guaranteed to only have valid, doable solutions in our current solution_list
   method choose_move(Board $B) {
     
-    return self.crazy_move($B) if chance($!crazy_moves);    # non-thinking move
+    return self.crazy_move($B) if chance($!crazy_moves) and $B.U.elems > 1;    # non-thinking move -- has to be more than one cube left
     
     unless (self.solution_found) { note "***I challenge the bluff -- no solution"; return Nil }  # this shouldn't actually happen here
 
