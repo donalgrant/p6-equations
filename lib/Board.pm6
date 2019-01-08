@@ -17,12 +17,22 @@ class Board {
   
   has Str $.G='';     # goal (string of cubes)
 
-  multi method new( BagHash $U ) { note "Board from BagHash {$U.kxxv.join(',')}"; self.bless(:$U) }
+  multi method new( BagHash $U ) { self.bless(:$U) }
   multi method new( Bag $B     ) { my $U=$B.BagHash;                     Board.new(:$U) }
   multi method new( Seq $cubes ) { note "Board from Seq {$cubes.join(',')}";  my $U=BagHash.new($[$cubes]);         Board.new(:$U) }
   multi method new( Str $cubes ) { my $U=BagHash.new($cubes.comb(/\S/)); Board.new(:$U) }
   multi method new( List $cubes) { note "Board from List {$cubes.join(',')}"; my $U=BagHash.new($cubes.join('').comb(/\S/));  Board.new(:$U) }
-  
+
+  method clone {
+    my $U=self.U (+) self.R (+) self.P (+) self.F (+) self.G.comb.BagHash; # all the cubes in the original board
+    my $C=Board.new(:$U);  
+    $C.move_to_goal(self.goal) if self.goal.chars > 0;
+    $C.move_to_forbidden($_) for self.forbidden;
+    $C.move_to_required($_)  for self.required;
+    $C.move_to_permitted($_) for self.permitted;
+    return $C;
+  }
+    
   submethod TWEAK() { $!R=BagHash.new; $!P=BagHash.new; $!F=BagHash.new }
   
   method required  { $!R.kxxv }

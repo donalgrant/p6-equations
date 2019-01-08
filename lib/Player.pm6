@@ -123,12 +123,20 @@ class Player {
       # by requiring something from the new one
       for %still_doable.keys -> $r {
 	if (chance(0.1)) {  # make a parameter
+	  note "Replacing $r; Board is \n{$B.display}";
 	  for $r.comb -> $cube {
-	    if (self.find_replacement($B,BagHash.new($cube),RPN.new($r))) {  # add new doable solutions
-	      for self.solution_list -> $rpn { %still_doable{~$rpn} = +$rpn if $BS.doable_solution($rpn) }
-	      note "***I'm moving $cube to forbidden (because I can replace it in $r)";
-	      $B.move_to_forbidden($cube);  # get rid of the cube we can replace -- that's the move
-	      return self;
+	    for self.find_replacement($B,BagHash.new($cube),RPN.new($r)) -> $new_rpn {
+	      note "got replacement $new_rpn -- will verify";
+	      my RPN $rep_rpn .=new($new_rpn);
+	      %still_doable{$new_rpn} = +$rep_rpn if $BS.doable_solution($rep_rpn);  # make sure -- not sure we need the call to $BS
+	      self.save_solution($rep_rpn);
+	      if (BagHash.new($cube) (<=) $B.U) {
+		note "***I'm moving $cube to forbidden (because I can replace it in $r --> $rep_rpn)";
+		$B.move_to_forbidden($cube);  # get rid of the cube we can replace -- that's the move
+		note "Board is now:\n{$B.display}";
+		self.filter_solutions($B);
+		return self;
+	      }
 	    }
 	  }
 	}
@@ -139,12 +147,14 @@ class Player {
 	my $missing = $BS.cubes-missing_for( RPN.new($r) );
 	if ($missing.elems > 0) {
 	  note "{RPN.new($r).aos} is no longer doable -- needs {$missing.kxxv}";
-	  if (self.find_replacement($B,$missing,RPN.new($r))) {  # add new doable solutions
-	    for self.solution_list -> $rpn { %still_doable{~$rpn} = +$rpn if $BS.doable_solution($rpn) }
+	  for self.find_replacement($B,$missing,RPN.new($r)) -> $new_rpn {
+	    my RPN $rpn .=new($new_rpn);
+	    %still_doable{$new_rpn} = +$rpn if $BS.doable_solution($rpn);  # make sure -- not sure we need the call to $BS
+	    self.save_solution($rpn);
 	  }
 	} else { # must be a new required which is not part of the RPN
 	  my $extra_req = $BS.req-not-in( RPN.new($r) );
-	  note "{RPN.new($r).aos} is no longer doable -- required {$extra_req.kxxv}";
+	  note "{RPN.new($r).aos} is no longer doable -- does not have required {$extra_req.kxxv}";
 	  # only do this (for now?) for a single extra required element
 	  
 	  # can we extend the formula to include the new number using
@@ -169,12 +179,14 @@ class Player {
     self.filter_solutions($B); 
     self.choose_move($B);  
   }
-  
+
+  # returns a list of replacement rpn-strings, or empty list if none found
+  # maybe make this whole thing a gather / take?
   method find_replacement(Board $B, BagHash $missing, RPN $rpn) {
-    return False unless $B.R (<=) $rpn.Bag;   # must be able to use all required cubes
+    return [] unless $B.R (<=) $rpn.Bag;   # must be able to use all required cubes
     if ($missing.total>1) {
       note "find_replacement for $rpn is missing ({$missing.kxxv}) more than one cube";
-      return False;
+      return [];
     }
     my ($cube)=$missing.kxxv;
     if ($cube~~/<digit>/) {
@@ -188,21 +200,20 @@ class Player {
       my Board_Solver $BS .= new(Board.new($b).move_to_goal($cube));
       for 3,5 -> $ncubes {  # no need for 1, otherwise not really a replacement!
 	$BS.calculate_solutions($ncubes);
-	if ($BS.solution_found) {
+	my @rpn_list = gather {
 	  for $BS.solution_list -> $r {
-#	    note "$ncubes cube solution:  $r";
+	    next if $cube (elem) $r.Bag;   # don't replace with the same cube!
 	    # create a new RPN by replacing in the original rpn
 	    my $new_rpn = $rpn.Str;  $new_rpn~~s/$cube/{~$r}/;
-#	    note "saving new solution:  $rpn --> $new_rpn";
-	    self.save_solution(RPN.new($new_rpn));
+	    take $new_rpn;
 	  }
-	  return True;
 	}
+	return @rpn_list.elems > 0 ?? @rpn_list !! [];
       }
-      return False;
+      return [];
     }
 #    note "missing cube $cube is an operator";
-    return False if $cube~~/<[-/]>/;
+    return Nil if $cube~~/<[-/]>/;
     # can we construct a missing operator with an equation representing
     #     is inverse?  (can't do it for '-' and '/')
     #   x+w --> x-(y-z)   where w = z-y
@@ -210,7 +221,7 @@ class Player {
     #   x^w --> (y/z)@x   where w = z/y
     #   w@x --> (x^(y/z)) where w = z/y
     
-    return False;
+    return [];
   }
   
   # for choose_move, we are guaranteed to only have valid, doable solutions in our current solution_list
