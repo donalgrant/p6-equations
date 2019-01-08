@@ -244,7 +244,7 @@ class Player {
     }
 
     # not done yet -- find a good play
-    return self.crazy_move($B) if chance(0.1);    # make probability a Player parameter, and make interface nicer
+    return self.crazy_move($B) if chance(0.05);    # make probability a Player parameter, and make interface nicer
 
     # okay--really, now find a good play
     # would like to target destruction (culling) of competing rpn's if possible.
@@ -277,7 +277,10 @@ class Player {
 
   method crazy_move(Board $B) {
     my $cube=$B.unused.roll;
-    if (chance(0.75)) {
+    if (chance(0.50)) {
+      note "***I'm crazily moving $cube to permitted";
+      $B.move_to_permitted($cube);
+    } elsif (chance(0.50)) {
       note "***I'm crazily moving $cube to forbidden"; 
       $B.move_to_forbidden($cube);
     } else {
