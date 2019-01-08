@@ -126,7 +126,6 @@ class Player {
 	  note "Replacing $r; Board is \n{$B.display}";
 	  for $r.comb -> $cube {
 	    for self.find_replacement($B,BagHash.new($cube),RPN.new($r)) -> $new_rpn {
-	      note "got replacement $new_rpn -- will verify";
 	      my RPN $rep_rpn .=new($new_rpn);
 	      %still_doable{$new_rpn} = +$rep_rpn if $BS.doable_solution($rep_rpn);  # make sure -- not sure we need the call to $BS
 	      self.save_solution($rep_rpn);
