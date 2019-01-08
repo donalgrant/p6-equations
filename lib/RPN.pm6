@@ -57,12 +57,13 @@ grammar WF_RPN {
   token rpn_op   { <op>    { $*OP_CNT++  } <?{ $*OP_CNT <= $*DGT_CNT }> }
 }
   
-sub rpn_value ($rpn) is export {
+sub rpn_value ($rpn) is export { 
+  return Nil unless $rpn.defined;
   return %RPN_CACHE{$rpn} if %RPN_CACHE{$rpn}.defined;
   my @list=$rpn.comb;
   return 0 unless (+@list);
   my @stack;
-  my $bos;
+  my $bos; 
   while (+@list and push @stack, $bos=shift @list) {
     next if %NUM{$bos}.defined;  # fastest way to do matching -- much better than ~~/\d/
     my $op=@stack.pop;

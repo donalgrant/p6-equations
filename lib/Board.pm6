@@ -24,7 +24,7 @@ class Board {
   multi method new( List $cubes) { note "Board from List {$cubes.join(',')}"; my $U=BagHash.new($cubes.join('').comb(/\S/));  Board.new(:$U) }
 
   method clone {
-    my $U=self.U (+) self.R (+) self.P (+) self.F (+) self.G.comb.BagHash; # all the cubes in the original board
+    my $U=(self.U (+) self.R (+) self.P (+) self.F (+) self.G.comb.BagHash).BagHash; # all the cubes in the original board
     my $C=Board.new(:$U);  
     $C.move_to_goal(self.goal) if self.goal.chars > 0;
     $C.move_to_forbidden($_) for self.forbidden;

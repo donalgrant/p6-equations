@@ -104,7 +104,7 @@ class Player {
   method turn( Board $B ) {
 
     self.generate_solutions($B) unless (%!S.elems>0);
-
+    
     unless (%!S.elems>0) {
       note "***I challenge -- I see no solution";
       return Nil;
@@ -116,16 +116,17 @@ class Player {
 
     for self.solution_list -> $rpn { $BS.doable_solution($rpn) ?? ( %still_doable{~$rpn} = +$rpn ) !! ( %not_doable{~$rpn} = +$rpn ) }
 
-    if (%still_doable.elems>0) {
+    if (%still_doable.elems > 0) {
       # could possibly extend doable solutions here via add / replace
       # choose a move based on the current list of valid solutions.
       # only worth doing if we then rule out the original solution
       # by requiring something from the new one
       for %still_doable.keys -> $r {
 	if (chance(0.1)) {  # make a parameter
-	  note "Replacing $r; Board is \n{$B.display}";
+	  note "Replacing $r; Board is \n {$B.display}";
 	  for $r.comb -> $cube {
 	    for self.find_replacement($B,BagHash.new($cube),RPN.new($r)) -> $new_rpn {
+	      note "replacement for ($r) is ($new_rpn)";
 	      my RPN $rep_rpn .=new($new_rpn);
 	      %still_doable{$new_rpn} = +$rep_rpn if $BS.doable_solution($rep_rpn);  # make sure -- not sure we need the call to $BS
 	      self.save_solution($rep_rpn);
@@ -162,19 +163,19 @@ class Player {
 	  #     R+(w-F) R-(w-F) where F is 1,3,5 cubes which evaluate to w (needs +,- or -,-)
 	  #     R/(w/F) R*(w/F) where F is 1,3,5 cubes which evaluate to w (needs /,* or /,/)
 	  #     (w/F)@R R^(w/F) where F is 1,3,5 cubes which evaluate to w (needs /,@ or ^,/)
-
+	  
 	  # can we extend the formula to include a new operator using
 	  #   an identity relation?  If R is the original formula, and
 	  #   o is the new operator:
 	  #     RoF      where F is 1,3,5 cubes which evaluate to 0 for o = +,-
 	  #     RoF, FoR where F is 1,3,5 cubes which evaluate to 1 for o = *,/,^,@
-
+	  
 	}
       }
       note $B.display if %not_doable.elems > 0;
-      self.generate_solutions($B) unless (%still_doable.elems>0);
+      self.generate_solutions($B) unless %still_doable.elems > 0;
     }
-    
+
     self.filter_solutions($B); 
     self.choose_move($B);  
   }
@@ -194,7 +195,7 @@ class Player {
       # Set up a Board_Solver to try to find missing cube
 #      note "creating a bag from missing={$missing.kxxv}; allowed={$B.allowed.kxxv}; rpn={$rpn.Bag.kxxv}";
 #      note "bag sums are:  missing+allowed={($missing (+) $B.allowed).kxxv}; rpn-missing={($rpn.Bag (-) $missing).kxxv}";
-      my BagHash $b = ($missing (+) $B.allowed) (-) ($rpn.Bag (-) $missing);  # add missing for goal
+      my BagHash $b = (($missing (+) $B.allowed) (-) ($rpn.Bag (-) $missing)).BagHash;  # add missing for goal
 #      note "Setting up a Board with cubes {$b.kxxv}, which should include missing cube $cube";
       my Board_Solver $BS .= new(Board.new($b).move_to_goal($cube));
       for 3,5 -> $ncubes {  # no need for 1, otherwise not really a replacement!
@@ -212,7 +213,7 @@ class Player {
       return [];
     }
 #    note "missing cube $cube is an operator";
-    return Nil if $cube~~/<[-/]>/;
+    return [] if $cube~~/<[-/]>/;
     # can we construct a missing operator with an equation representing
     #     is inverse?  (can't do it for '-' and '/')
     #   x+w --> x-(y-z)   where w = z-y
@@ -222,7 +223,7 @@ class Player {
     
     return [];
   }
-  
+
   # for choose_move, we are guaranteed to only have valid, doable solutions in our current solution_list
   method choose_move(Board $B) {
     
