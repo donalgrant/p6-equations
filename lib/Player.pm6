@@ -10,11 +10,48 @@ class Player {
 
   has Numeric %.S{Str}=();  # solutions (keys are rpn strings, values are numeric for RPN)
 
+  has $.name              is rw = "Nemo";
+  
+  has $.crazy_moves       is rw;
+  has $.permitted_crazy   is rw;
+  has $.required_crazy    is rw;
+  has $.forbidden_crazy   is rw;
+  has $.extend_solutions  is rw;
+  has $.force_required    is rw;
+
+  method TWEAK { self.default_parms }
+  
+  method default_parms {
+    $!crazy_moves=0.05;
+    $!permitted_crazy=0.50;
+    $!required_crazy=0.25;
+    $!forbidden_crazy=0.25;
+    $!extend_solutions=0.10;
+    $!force_required=0.75;
+    return self;
+  }
+  
+  method display {
+    my $div='–' x 40;
+    my $out=qq:to/END/;
+    $div
+    Player $!name:
+           Crazy moves:  {$!crazy_moves*100.0}%
+               Permitted:  {$!crazy_moves*$!permitted_crazy*100.0}% 				       
+                Required:  {$!crazy_moves*$!required_crazy *100.0}%							   
+               Forbidden:  {$!crazy_moves*$!forbidden_crazy*100.0}%
+      Extend Solutions:  {$!extend_solutions*100.0}%
+        Force Required:  {$!force_required  *100.0}%
+    $div													      
+    END
+    return $out;
+  }
+
   method clear_solutions         { %!S        = ();    self }
   method save_solution(RPN $rpn) { %!S{~$rpn} = +$rpn; self }
   method solution_list           { %!S.keys.grep({ %!S{$_}.defined }).map({ RPN.new($_) }) }
   method solution_found          { self.solution_list.elems > 0 }
-  
+
   method filter_solutions( Board $B ) {
     my Board_Solver $BS .= new($B);
     for self.solution_list { %!S{~$_}:delete unless ($BS.valid_solution($_) and $BS.doable_solution($_))  }
@@ -122,7 +159,7 @@ class Player {
       # only worth doing if we then rule out the original solution
       # by requiring something from the new one
       for %still_doable.keys -> $r {
-	if (chance(0.1)) {  # make a parameter
+	if (chance($!extend_solutions)) {  # make a parameter
 	  note "Replacing $r; Board is \n {$B.display}";
 	  for $r.comb -> $cube {
 	    for self.find_replacement($B,BagHash.new($cube),RPN.new($r)) -> $new_rpn {
@@ -227,6 +264,8 @@ class Player {
   # for choose_move, we are guaranteed to only have valid, doable solutions in our current solution_list
   method choose_move(Board $B) {
     
+    return self.crazy_move($B) if chance($!crazy_moves);    # non-thinking move
+    
     unless (self.solution_found) { note "***I challenge the bluff -- no solution"; return Nil }  # this shouldn't actually happen here
 
     my Board_Solver $BS .= new($B);
@@ -243,16 +282,13 @@ class Player {
       }
     }
 
-    # not done yet -- find a good play
-    return self.crazy_move($B) if chance(0.05);    # make probability a Player parameter, and make interface nicer
-
-    # okay--really, now find a good play
+    # now find a good play
     # would like to target destruction (culling) of competing rpn's if possible.
     my $target_rpn = self.target_rpn($B);  note "I'm working towards {$target_rpn.aos}";
     my $pos_options = $BS.cubes-to-go_for($target_rpn);
     if ($pos_options.total>2) { # can consider a move to req or perm -- won't cause a "go-out" for other player
       my $cube=$pos_options.roll;
-      if (chance(0.75)) {
+      if (chance($!force_required)) {
 	say "***I'm moving $cube to required";
 	$B.move_to_required($cube);
       } else {  # randomly make a potentially sub-optimal move which nevertheless adds complexity
@@ -277,15 +313,14 @@ class Player {
 
   method crazy_move(Board $B) {
     my $cube=$B.unused.roll;
-    if (chance(0.50)) {
-      note "***I'm crazily moving $cube to permitted";
-      $B.move_to_permitted($cube);
-    } elsif (chance(0.50)) {
-      note "***I'm crazily moving $cube to forbidden"; 
-      $B.move_to_forbidden($cube);
-    } else {
-      note "***I'm crazily moving $cube to required"; 
-      $B.move_to_required($cube);
+    my $pc=$!permitted_crazy;
+    my $pr=$!required_crazy+$pc;
+    my $pf=$!forbidden_crazy+$pr;
+    die "crazy moves don't add up:  $pf != 100% for\n {self.display}" unless $pf==1.0;
+    given rand {
+      when 0.0 <= $_ < $pc { note "***I'm crazily moving $cube to permitted"; $B.move_to_permitted($cube) }
+      when $pc <= $_ < $pr { note "***I'm crazily moving $cube to forbidden"; $B.move_to_forbidden($cube) }
+      when $pr <= $_ < $pf { note "***I'm crazily moving $cube to required";  $B.move_to_required($cube)  }
     }
     return self;
   }

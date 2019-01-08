@@ -42,9 +42,19 @@ is( $P.choose_goal(Board.new(Bag.new(qw{ 1 2 1 2 * / })), 1), Nil, "No goal poss
 
 my $cube_str='*++------///001111112333356@@@25';
 
+$P.permitted_crazy=0.6;   # without changing the other types, this should break
+dies-ok { $P.crazy_move(Board.new(Bag.new($cube_str.comb))) }, "crazy_move fails with inconsistent parameters";
+$P.permitted_crazy=0.5;   # reset
+
 # play five boards
 
-for ^5 { note "Testing Board $_";
+for ^5 {
+  note "Testing Game $_";
+  $P.name="Test Player $_";
+  $P.crazy_moves=$_*0.25;
+  $P.force_required=1.0-0.1*$_;
+  $P.extend_solutions=0.1*$_;
+  note $P.display;
   $B=Board.new(Bag.new($cube_str.comb));
   my $g=$P.choose_goal($B);
   ok( $g.defined, "Choose a goal" );
@@ -56,5 +66,6 @@ for ^5 { note "Testing Board $_";
 #    last inner unless $P.manual($B);
   }
 }
+
 
 done-testing();
