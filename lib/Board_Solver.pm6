@@ -2,7 +2,6 @@ use v6;
 
 use Algorithm::Combinatorics:from<Perl5> qw<tuples combinations permutations>;
 
-use lib ".";
 use Globals;
 use RPN;
 use Board;

@@ -7,6 +7,7 @@ class Player {
   use RPN;
   use Board;
   use Board_Solver;
+  use Play;
 
   has Numeric %.S{Str}=();  # solutions (keys are rpn strings, values are numeric for RPN)
 
@@ -49,6 +50,7 @@ class Player {
 
   method clear_solutions         { %!S        = ();    self }
   method save_solution(RPN $rpn) { %!S{~$rpn} = +$rpn; self }
+  
   method solution_list           { %!S.keys.grep({ %!S{$_}.defined }).map({ RPN.new($_) }) }
   method solution_found          { self.solution_list.elems > 0 }
 
@@ -68,6 +70,7 @@ class Player {
     }
     note "No solutions possible" unless $BS.solution_found;
     for $BS.solution_list -> $rpn { self.save_solution($rpn) }
+    self;
   }
   
   # move to Board_Solver
@@ -90,13 +93,43 @@ class Player {
     return $B.goal;
   }
 
-  method manual(Board $B, $bonus_taken=False) {
+  method manual_select_cube(Board $B, $p="Cube:  ") {
+    my $cube;
+    repeat { $cube = prompt $p } until $B.unused.Bag{~$cube} > 0;
+    return $cube;
+  }
 
-    my ($move,$section);
+  my %DEST=( F=>'Forbidden', P=>'Permitted', R=>'Required' );
+  method manual_select_dest($p="F(orbidden), P(ermitted), or R(equired):  ") {
+    my $dest;
+    repeat { $dest = prompt $p } until %DEST{$dest.uc}:exists ;
+    return %DEST{$dest.uc};
+  }
+  
+  method manual(Board $B) {
 
     put $B.display();
-    repeat { $move    = prompt "Cube or H(int):  " } until ($move ~~ m:i/<[H]>/) or ($B.unused.Bag{$move} > 0);
-    if ($move ~~ m:i/<[H]>/) {
+    
+    my $type;
+    repeat { $type = prompt "Play:  M=Move a cube, B=Bonus Move, E=Equation, C=Call a bluff, H=Hint:  " }
+      until $type ~~ m:i/^<[MBECH]>/;
+
+    given ($type.uc) {
+      when ('M') {
+	my $cube=self.manual_select_cube($B);
+	my $dest=self.manual_select_dest;
+	return Play.new(who=>$!name,type=>'Move',:$cube,:$dest);
+      }
+      when ('B') {
+	my $bonus_cube=self.manual_select_cube($B,"Forbidden Cube:  ");
+	my $cube=self.manual_select_cube($B);
+	my $dest=self.manual_select_dest;
+	return Play.new(who=>$!name,type=>'Bonus',:$bonus_cube,:$cube,:$dest);
+      }
+      when ('C') {
+	return Play.new(who=>$!name,type=>'Terminal');
+      }
+      when ('H') {
 	self.generate_solutions($B) unless (%!S.elems>0);
 	my Board_Solver $BS .= new($B);
 	my @hint_list = self.solution_list.grep({ $BS.doable_solution($_) });
@@ -104,38 +137,27 @@ class Player {
 	if (@hint_list.elems>0) {
 	  say "Example Solution:  {@hint_list.roll.aos}";
 	} else { say "I have no idea!" }
-	return self.manual($B,$bonus_taken);
-    }
-    
-    repeat { $section = prompt "To (R(equired) P(ermitted) F(orbidden) B(onus) E(quation) H(int):  " }
-      until $section ~~ m:i/^<[RPFHEB]>/;
-
-    given ($section.uc) {
-      when ('R') {  $B.move_to_required($move) }
-      when ('P') { $B.move_to_permitted($move) }
-      when ('F') { $B.move_to_forbidden($move) }
-      when ('B') { 
-	do { say "Only one bonus per turn"; return self.manual($B,$bonus_taken) } if $bonus_taken;
-	$B.move_to_forbidden($move);
-	return self.manual($B,True);
+	return self.manual($B);
       }
-      when ('E') { 
-	my $must_use=$B.required.add($move);
-	my $now_avail=$B.permitted.add($must_use);
+      when ('E') {
+	my $cube=self.manual_select_cube($B);
+	my $SB=$B.clone;   # we're going to modify the board, so need a copy
+	my $must_use=$SB.required.add($cube);
+	my $now_avail=$SB.permitted.add($must_use);
 	my $eq_in = prompt "Enter Equation in either AOS or RPN form; use '?' to escape:  ";
 	my $rpn;
 	if    (valid_rpn($eq_in)) { $rpn=RPN.new($eq_in) }
 	elsif (valid_aos($eq_in)) { $rpn=RPN.new_from_aos($eq_in) }
-	else                      { return self.manual($B,$bonus_taken) }
+	else                      { return self.manual($B) }
 	my $rpn_cubes=Bag.new($rpn.list);
 	my $result = +$rpn;  # need to validate RPN here
-	unless ($result==$B.goal)           { say "Your RPN=$result, which is not the goal!";  return self.manual($B,$bonus_taken) }
-	unless ($rpn_cubes (>=) $must_use)  { say "Your RPN does not use all required cubes!"; return self.manual($B,$bonus_taken) }
-	unless ($now_avail (>=) $rpn_cubes) { say "Not enough cubes to make your RPN!";        return self.manual($B,$bonus_taken) }
-	say "You win!  Congratulations!";  return Nil;
+	unless ($result==$B.goal)           { say "Your RPN=$result, which is not the goal!";  return self.manual($B) }
+	unless ($rpn_cubes (>=) $must_use)  { say "Your RPN does not use all required cubes!"; return self.manual($B) }
+	unless ($now_avail (>=) $rpn_cubes) { say "Not enough cubes to make your RPN!";        return self.manual($B) }
+	say "You'll win!  Congratulations!";
+	return Play.new(who=>$!name,type=>'Terminal',rpn=>$rpn);
       }
     }
-    self; 
   }
 
   method turn( Board $B ) {

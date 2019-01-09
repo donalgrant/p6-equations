@@ -1,16 +1,14 @@
 use v6;
 
-# use lib ".";
-
 use Globals;
 use RPN;
 
-my @BP_Type = qw< Regular Bonus Terminal >;
+my @BP_Type = qw< Move Bonus Terminal >;
 my @BP_Dest = qw< Forbidden Permitted Required >;
 
 class Play {
   
-  has $.type          is rw is required; # Type of move ('Regular','Bonus','Terminal')
+  has $.type          is rw is required; # Type of move ('Move','Bonus','Terminal')
 
   has $.who           is rw = 'Unnamed'; # who is doing this move
   has $!from                = 'Unused'; # this is not currently an option in the game
@@ -25,7 +23,7 @@ class Play {
   submethod TWEAK {  # use this to ensure consistency
     die "Invalid type ($!type)" unless $!type eq any @BP_Type;
     given $!type {
-      when 'Regular'|'Bonus' {
+      when 'Move'|'Bonus' {
 	die "Non-terminal move must specify cube" unless $!cube.chars > 0;
 	die "Non-terminal move must define dest" unless $!dest.chars > 0;
     	die "Non-terminal move must have valid destination ($!dest)" unless $!dest eq any @BP_Dest;
@@ -44,7 +42,7 @@ class Play {
     my $tag="*** Player $!who";
     my $out;
     given $!type {
-      when 'Regular'  { $out="$tag moves $!cube to the $!dest section" }
+      when 'Move'     { $out="$tag moves $!cube to the $!dest section" }
       when 'Bonus'    { $out="$tag makes a bonus play:  $!bonus_cube to Forbidden and $!cube to the $!dest section" }
       when 'Terminal' {
 	if ($!rpn.defined and $!rpn.Bag.elems > 0) {
@@ -75,8 +73,8 @@ and how the play was arrived at.
 
 =head2 Object Data
 
-    * Type of move (Regular Play, Bonus Play, or Terminating Play)
-    * For Regular Play:  from (always Unused at present) and to (Forbidden, Permitted, Required)
+    * Type of move (Move Play, Bonus Play, or Terminating Play)
+    * For Move Play:  from (always Unused at present) and to (Forbidden, Permitted, Required)
     * For Bonus Play:  from (always Unused at present) and to (Forbidden/Permitted/Required) for non-Bonus Cube
     * Cube being moved
     * Bonus cube being moved to Forbidden
