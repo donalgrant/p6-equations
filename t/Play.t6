@@ -15,6 +15,7 @@ use RPN;
 my @methods=qw<new who type cube bonus_cube dest rpn solutions display>;
 
 my $B=Play.new(type=>'Regular',who=>'The_Author',cube=>'^',dest=>'Required',rpn=>RPN.new('11^11@+'));
+$B.notes="This is a test play";
 isa-ok($B, 'Play', "Fully-specified play:  {$B.display}");
 
 can-ok( $B, $_ ) for @methods;

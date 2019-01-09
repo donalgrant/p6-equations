@@ -18,6 +18,8 @@ class Play {
   has $.dest          is rw; # where the cube is being moved
   has RPN $.rpn       is rw; # RPN in mind for solution (if there is one)
 
+  has $.notes         is rw; #rationale for the move
+  
   has Numeric %.solutions{Str}=();  # other solutions in mind (keys are rpn strings, values are numeric for RPN)
 
   submethod TWEAK {  # use this to ensure consistency
@@ -52,7 +54,8 @@ class Play {
 	  $out="$tag calls the previous player's Bluff -- no solution is possible"; 
 	}
       }
-    }   
+    }
+    $out~="\n$!notes" if $!notes;
     return $out;
   }
 

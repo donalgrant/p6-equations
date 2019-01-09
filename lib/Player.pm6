@@ -165,7 +165,7 @@ class Player {
     
     unless (%!S.elems>0) {
       note "***I challenge -- I see no solution";
-      return Nil;
+      return Play.new(who=>$!name,type=>'Terminal');
     }
     
     my Board_Solver $BS .= new($B);
@@ -189,11 +189,9 @@ class Player {
 	      %still_doable{$new_rpn} = +$rep_rpn if $BS.doable_solution($rep_rpn);  # make sure -- not sure we need the call to $BS
 	      self.save_solution($rep_rpn);
 	      if (BagHash.new($cube) (<=) $B.U) {
-		note "***I'm moving $cube to forbidden (because I can replace it in $r --> $rep_rpn)";
-		$B.move_to_forbidden($cube);  # get rid of the cube we can replace -- that's the move
-		note "Board is now:\n{$B.display}";
-		self.filter_solutions($B);
-		return self;
+		return Play.new(who=>$!name,type=>'Move',dest=>'Forbidden',cube=>$cube,rpn=>$rep_rpn,
+				notes=>"I can replace the $cube in $r to get $rep_rpn");
+		self.filter_solutions($B);   # need to figure out how to do this
 	      }
 	    }
 	  }
@@ -286,20 +284,20 @@ class Player {
   method choose_move(Board $B) {
     
     return self.crazy_move($B) if chance($!crazy_moves) and $B.U.elems > 1;    # non-thinking move -- has to be more than one cube left
-    
-    unless (self.solution_found) { note "***I challenge the bluff -- no solution"; return Nil }  # this shouldn't actually happen here
+
+    # this shouldn't actually happen here
+    unless (self.solution_found) { return Play.new(who=>$!name,type=>'Terminal',note=>"Challenge the bluff -- no solution")  }
 
     my Board_Solver $BS .= new($B);
 
     for self.solution_list -> $rpn {
       if $BS.on-board_solution($rpn) {
-	note "***I win:  {$rpn.aos} is already on the board";
-	return Nil;
+	return Play.new(who=>$!name,type=>'Terminal',rpn=>$rpn,notes=>"{$rpn.aos} is already on the board");
       }
       my $go_out_cube=$BS.go-out_check($rpn);
       if ($go_out_cube.defined) {
-	note "***I win:  I can construct {$rpn.aos} by bringing $go_out_cube to the Solution";
-	return Nil;
+	return Play.new(who=>$!name,type=>'Terminal',rpn=>$rpn,
+			notes=>"{$rpn.aos} can be constructed by bringing $go_out_cube to the Solution");
       }
     }
 
@@ -307,43 +305,30 @@ class Player {
     # would like to target destruction (culling) of competing rpn's if possible.
     my $target_rpn = self.target_rpn($B);  note "I'm working towards {$target_rpn.aos}";
     my $pos_options = $BS.cubes-to-go_for($target_rpn);
+    my %play=(who=>$!name,type=>'Move',rpn=>$target_rpn);
     if ($pos_options.total>2) { # can consider a move to req or perm -- won't cause a "go-out" for other player
-      my $cube=$pos_options.roll;
-      if (chance($!force_required)) {
-	say "***I'm moving $cube to required";
-	$B.move_to_required($cube);
-      } else {  # randomly make a potentially sub-optimal move which nevertheless adds complexity
-	say "***I'm moving $cube to permitted";
-	$B.move_to_permitted($cube);       # this can be a mistake, if it enables a different solution than $target_rpn
-      }
+      %play<cube>=$pos_options.roll;
+      return Play.new(dest=>'Required', |%play) if chance($!force_required);
+      return Play.new(dest=>'Permitted',|%play);
     } else { # do a move to forbidden if possible, otherwise permitted
       my $excess=$B.U (-) $target_rpn.Bag;
-      if ($excess.total > 0) {
-	my $cube=$excess.roll;
-	say "***I'm moving excess $cube to forbidden";
-	$B.move_to_forbidden($cube);
-      } else {  # no forbidden cubes -- put in permitted
-	my $cube=$B.unused.roll;
-	say "***I'm moving remaining cube $cube to permitted";
-	$B.move_to_permitted($B.unused.roll);
-      }
+      return Play.new(dest=>'Forbidden',cube=>$excess.roll,  notes=>'excess',   |%play) if $excess.total > 0;
+      return Play.new(dest=>'Permitted',cube=>$B.unused.roll,notes=>'remaining',|%play);
     }
 
-    self;
   }
 
   method crazy_move(Board $B) {
-    my $cube=$B.unused.roll;
     my $pc=$!permitted_crazy;
     my $pr=$!required_crazy+$pc;
     my $pf=$!forbidden_crazy+$pr;
     die "crazy moves don't add up:  $pf != 100% for\n {self.display}" unless $pf==1.0;
+    my %play=(who=>$!name,type=>'Move',cube=>$B.unused.roll,notes=>'crazy move');
     given rand {
-      when 0.0 <= $_ < $pc { note "***I'm crazily moving $cube to permitted"; $B.move_to_permitted($cube) }
-      when $pc <= $_ < $pr { note "***I'm crazily moving $cube to forbidden"; $B.move_to_forbidden($cube) }
-      when $pr <= $_ < $pf { note "***I'm crazily moving $cube to required";  $B.move_to_required($cube)  }
+      when 0.0 <= $_ < $pc { return Play.new(dest=>'Permitted',|%play) }
+      when $pc <= $_ < $pr { return Play.new(dest=>'Forbidden',|%play) }
+      when $pr <= $_ < $pf { return Play.new(dest=>'Required', |%play) }
     }
-    return self;
   }
 
   method target_rpn(Board $B) {

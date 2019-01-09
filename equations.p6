@@ -15,6 +15,21 @@ use Cube;
 
 # $::opt{debug}=scalar(@ARGV);
 
+sub do-move(Board $b, Play $p) {
+  note $p.display;
+  given $p.type {
+    when 'Terminal'      { note "You're calling a bluff" unless defined $p.rpn; return False }
+    when 'Bonus'         { $b.move_to_forbidden($p.bonus_cube); proceed }  
+    when 'Bonus'|'Move'  { given $p.dest {
+                               when 'Forbidden' { $b.move_to_forbidden($p.cube) }
+			       when 'Permitted' { $b.move_to_permitted($p.cube) }
+			       when 'Required'  { $b.move_to_required( $p.cube) }
+			     }
+			 }
+  }
+  return True;
+}
+
 my @c=[1..12].map({   Red_Cube.new });
 my @d= [1..8].map({  Blue_Cube.new });
 my @e= [1..6].map({ Green_Cube.new });
@@ -27,8 +42,8 @@ my Board $B.=new(Bag.new($CB.showing));
 
 msg $B.display;
 
-my $P1=Player.new(name=>'Computer');
-my $P2=Player.new(name=>'Human');
+my $P1=Player.new(name=>'Computer 1');
+my $P2=Player.new(name=>'Computer 2');
 
 my $g=$P1.choose_goal($B);
 
@@ -40,24 +55,11 @@ note "Starting Board:\n{$B.display}";
 
 # Play the game
 
-# keep solutions as game is played.  Monitor bag of cubes required for
-# solution, and only recalculate if bag is no longer available 
-
 loop {
 
-  last unless $P1.turn($B); # not converted to Play yet
-  my $p=$P2.manual($B);
-  note $p.display;
-  given $p.type {
-    when 'Terminal'      { note "You're calling a bluff" unless defined $p.rpn; last }
-    when 'Bonus'         { $B.move_to_forbidden($p.bonus_cube); proceed }  
-    when 'Bonus'|'Move'  { given $p.dest {
-                             when 'Forbidden' { $B.move_to_forbidden($p.cube) }
-		             when 'Permitted' { $B.move_to_permitted($p.cube) }
-			     when 'Required'  { $B.move_to_required( $p.cube) }
-			   }
-			 }
-  }		    
+  last unless do-move($B,$P1.turn($B));
+  last unless do-move($B,$P2.turn($B));
+
 }
 
 note "Final Board:\n{$B.display}";
