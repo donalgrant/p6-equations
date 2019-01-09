@@ -18,6 +18,9 @@ use Board;
 use-ok 'Player';
 use Player;
 
+use-ok 'Play';
+use Play;
+
 my @player_methods=qw< new choose_goal manual >;
 
 can-ok( Player.new, $_ ) for @player_methods;
@@ -48,6 +51,22 @@ $P.permitted_crazy=0.5;   # reset
 
 # play five boards
 
+
+sub do-move(Board $b, Play $p) {
+  note $p.display;
+  given $p.type {
+    when 'Terminal'      { note "You're calling a bluff" unless defined $p.rpn; return False }
+    when 'Bonus'         { $b.move_to_forbidden($p.bonus_cube); proceed }  
+    when 'Bonus'|'Move'  { given $p.dest {
+                               when 'Forbidden' { $b.move_to_forbidden($p.cube) }
+			       when 'Permitted' { $b.move_to_permitted($p.cube) }
+			       when 'Required'  { $b.move_to_required( $p.cube) }
+			     }
+			 }
+  }
+  return True;
+}
+
 for ^5 {
   note "Testing Game $_";
   $P.name="Test Player $_";
@@ -62,10 +81,10 @@ for ^5 {
  inner:
   loop { 
     note $B.display(); 
-    last inner unless $P.turn($B); 
-#    last inner unless $P.manual($B);
+    last unless do-move($B,$P.turn($B));
   }
 }
 
+# test for manual?
 
 done-testing();
