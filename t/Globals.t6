@@ -163,6 +163,11 @@ is ops_slots(5).sort, ['11111','11102',
 		       '00113','00104','00041','00032','00023','00014',
 		       '00005'].sort,                                    "ops slots for 5";
 
+
+
+is num-ops-slot(qw{ 2 3 4 },qw{ + * },'02'), '234+*', "Create an RPN from three nums and two ops";
+is num-ops-slot(qw{ 2 3 4 },qw{ + * },'11'), '23+4*', "Create an RPN from three nums and two ops, alternate slotting";
+
 ok choose_n(3,[ ^6 ])           (<=) [ ^6 ], "choose_n generates a subset of the source";
 ok choose_n([ ^6 ].elems,[ ^6 ]) ==  [ ^6 ], "choose_n can select the entire set";
 is-deeply choose_n(100,[ ^6 ]),      [ ^6 ], "choose_n returns original set if n out of range";

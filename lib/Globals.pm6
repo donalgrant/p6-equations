@@ -69,6 +69,22 @@ module Globals {
     for 2..$n-1 -> $slot { @options=build_ops_slot_options($slot,$n,@options) }
     @options.map( { $_~($n - [+] $_.comb) } );  # get last slot
   }
+
+  
+  # this method assumes on input that num_list has at least two entries,
+  # and ops_list has at least one entry; and also that $slot has been
+  # created consistent with the number of operations in $ops_list
+  
+  sub num-ops-slot($num_list,$ops_list,$slot) is export {
+    # note "constructing RPN for pn={$num_list.join(',')}; po={$ops_list.join(',')}; slot=$slot";
+    my ($ipn,$ipo)=(0,0);
+    my $x=$num_list[$ipn++];
+    for $slot.comb -> $s { #  note "inner block:  s=$s, x=$x, ipn=$ipn, ipo=$ipo, pn={$num_list.join(',')}, po={$ops_list.join(',')}";
+      $x~=$num_list[$ipn++];
+      $x~=$ops_list[$ipo++] for (1..$s);
+    }
+    return $x;
+  }
   
   sub unique_tuples(@a) is export { @a.unique(:as( *.join('') )) }
   

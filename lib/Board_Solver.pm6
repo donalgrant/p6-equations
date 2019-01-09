@@ -88,19 +88,8 @@ class Board_Solver {
     for @pn -> $pn {  # note "working with pn={$pn.join(',')}";
       for @po -> $po { # note "working with po={$po.join(',')}";
         for @ops_slots -> $slot {  # now construct this RPN
-#	  note "constructing RPN for pn={$pn.join(',')}; po={$po.join(',')}; slot=$slot";
-	  my ($ipn,$ipo)=(0,0);
-	  my $x=$pn[$ipn++];
-	  for $slot.comb -> $s { #  note "inner block:  s=$s, x=$x, ipn=$ipn, ipo=$ipo, pn={$pn.join(',')}, po={$po.join(',')}";
-	    $x~=$pn[$ipn++];
-	    $x~=$po[$ipo++] for (1..$s);
-	  }
-#	  note "creating RPN from $x";
-	  my $rpn=RPN.new($x);
-	  if ($rpn.defined) {
-#	    note "RPN=$x with value {+$rpn}";	  
-	    self!save_solution($rpn) if $rpn==$!B.goal;
-	  } # else { note "$x leads to undefined RPN" }
+	  my RPN $rpn .= new(num-ops-slot($pn,$po,$slot));  # could be undefined ('10/', etc)
+	  self!save_solution($rpn) if $rpn.defined and +$rpn==$!B.goal;
 	}
       }
     }
