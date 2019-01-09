@@ -141,19 +141,18 @@ class Player {
       }
       when ('E') {
 	my $cube=self.manual_select_cube($B);
-	my $SB=$B.clone;   # we're going to modify the board, so need a copy
-	my $must_use=$SB.required.add($cube);
-	my $now_avail=$SB.permitted.add($must_use);
+	my Bag $must_use= $B.R (+) Bag.new($cube);
+	my Bag $now_avail=$B.P (+) $must_use;
 	my $eq_in = prompt "Enter Equation in either AOS or RPN form; use '?' to escape:  ";
 	my $rpn;
 	if    (valid_rpn($eq_in)) { $rpn=RPN.new($eq_in) }
 	elsif (valid_aos($eq_in)) { $rpn=RPN.new_from_aos($eq_in) }
 	else                      { return self.manual($B) }
-	my $rpn_cubes=Bag.new($rpn.list);
+	my $rpn_bag=$rpn.Bag;
 	my $result = +$rpn;  # need to validate RPN here
-	unless ($result==$B.goal)           { say "Your RPN=$result, which is not the goal!";  return self.manual($B) }
-	unless ($rpn_cubes (>=) $must_use)  { say "Your RPN does not use all required cubes!"; return self.manual($B) }
-	unless ($now_avail (>=) $rpn_cubes) { say "Not enough cubes to make your RPN!";        return self.manual($B) }
+	unless ($result==$B.goal)          { say "Your RPN=$result, which is not the goal!";  return self.manual($B) }
+	unless ($rpn_bag (>=) $must_use)   { say "Your RPN does not use all required cubes!"; return self.manual($B) }
+	unless ($now_avail (>=) $rpn_bag)  { say "Not enough cubes to make your RPN!";        return self.manual($B) }
 	say "You'll win!  Congratulations!";
 	return Play.new(who=>$!name,type=>'Terminal',rpn=>$rpn);
       }
