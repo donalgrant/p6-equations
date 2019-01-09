@@ -55,7 +55,8 @@ class Play {
 	}
       }
     }
-    $out~="\n$!notes" if $!notes;
+    $out~="; {$!rpn.aos} is planned" if $!rpn.defined;
+    $out~=": $!notes" if $!notes;
     return $out;
   }
 
