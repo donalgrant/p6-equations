@@ -18,9 +18,10 @@ class RPN {
   method aos     { return rpn_to_aos($!rpn) }  
   method list    { $!rpn.comb }
 
-  method Numeric { rpn_value($!rpn)  }
-  method Str     { self.display      }
-  method Bag     { self.Str.comb.Bag }
+  method Numeric { rpn_value($!rpn)       }
+  method Str     { self.display           }
+  method Bag     { self.Str.comb.Bag      }
+  method BagHash { self.Str.comb.BagHash  }
 
 }
 

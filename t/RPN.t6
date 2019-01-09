@@ -34,6 +34,7 @@ is( $rpn.rpn, '76+', "public method rpn for RPN");
 is( $rpn.Numeric, 13, "simple addition" );
 
 ok( $rpn.Bag == Bag.new('76+'.comb), 'RPN converts to Bag' );
+ok( $rpn.BagHash == BagHash.new('76+'.comb), 'RPN converts to BagHash');
 
 is( RPN.new("76+").Numeric, 13, "cached" );
 is( RPN.new('76*').Numeric, 42, "simple multiplication" );

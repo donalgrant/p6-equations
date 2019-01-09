@@ -31,32 +31,13 @@ class Board_Solver {
   method doable_solution(   RPN $rpn ) { my $b=$rpn.Bag; ( $b (<=) ( $!B.allowed ) ) and ( ($!B.R) (<=) $b ) }
   method on-board_solution( RPN $rpn ) { my $b=$rpn.Bag; ( $b (<=) ( $!B.R (+) $!B.P ) ) and ( $b (>=) $!B.R ) }
 
-  # consolidate the following two with an internal method
+  method cubes-missing_for( RPN $rpn ) { $rpn.BagHash (-) $!B.allowed }  # bag of cubes in RPN which are not available anywhere on the board
+  method req-not-in(        RPN $rpn ) { $!B.R (-) $rpn.BagHash       }  # bag of cubes in required which don't appear in the RPN
   
-  # bag of cubes in RPN which are not available anywhere on the board
-  method cubes-missing_for( RPN $rpn ) {
-    my BagHash $b=$rpn.BagHash; 
-    my BagHash $a=$!B.allowed.BagHash;
-    for $b.kxxv { if ($a{$_} > 0) { $a{$_}--; $b{$_}-- } }
-    return $b;
-  }
 
-  # bag of cubes in required which don't appear in the RPN
-  method req-not-in( RPN $rpn ) {
-    my BagHash $b=$rpn.BagHash;
-    my BagHash $r=$!B.R.clone;
-    for $r.kxxv { if ($b{$_} > 0) { $b{$_}--; $r{$_}-- } }
-    return $r;
-  }
-  
-  # Bag of RPN cubes not yet in required and in unused
-  method cubes-to-go_for(   RPN $rpn ) {
-    my $b=$rpn.Bag;
-    return Nil unless $b (>=) $!B.R;       # won't work if requireds aren't part of rpn
-    my BagHash $g=($b (-) $!B.R).BagHash;  # subtract of cubes already in req'd
-    my BagHash $p=$!B.P.clone;             # copy of permitted cubes
-    for $g.kxxv -> $cube { if ($p{$cube}>0) { $g{$cube}--; $p{$cube}-- } }  # use permitteds as avail
-    return $g;
+  method cubes-to-go_for(   RPN $rpn ) {                                 # Bag of RPN cubes not yet in required and in unused
+    return Nil unless $rpn.BagHash (>=) $!B.R; # won't work if requireds aren't part of rpn
+    ($rpn.BagHash (-) $!B.R) (-) $!B.P;
   }  
   
   # is this RPN one cube unused cube away from a solution?  if so, return that cube

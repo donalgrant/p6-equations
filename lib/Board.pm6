@@ -34,7 +34,7 @@ class Board {
 
   method goal      { $!G // Nil }
 
-  method allowed   { ($!R (+) $!P (+) $!U) }
+  method allowed   { $!R (+) $!P (+) $!U }
   method available { self.allowed.kxxv }
   
   method display {

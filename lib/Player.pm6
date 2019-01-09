@@ -251,7 +251,7 @@ class Player {
       # Set up a Board_Solver to try to find missing cube
 #      note "creating a bag from missing={$missing.kxxv}; allowed={$B.allowed.kxxv}; rpn={$rpn.Bag.kxxv}";
 #      note "bag sums are:  missing+allowed={($missing (+) $B.allowed).kxxv}; rpn-missing={($rpn.Bag (-) $missing).kxxv}";
-      my BagHash $b = (($missing (+) $B.allowed) (-) ($rpn.Bag (-) $missing)).BagHash;  # add missing for goal
+      my BagHash $b = ($missing (+) $B.allowed) (-) ($rpn.BagHash (-) $missing);  # add missing for goal
 #      note "Setting up a Board with cubes {$b.kxxv}, which should include missing cube $cube";
       my Board_Solver $BS .= new(Board.new($b).move_to_goal($cube));
       for 3,5 -> $ncubes {  # no need for 1, otherwise not really a replacement!
@@ -296,7 +296,7 @@ class Player {
       }
       my $go_out_cube=$BS.go-out_check($rpn);
       if ($go_out_cube.defined) {
-	return Play.new(who=>$!name,type=>'Terminal',rpn=>$rpn,
+	return Play.new(who=>$!name,type=>'Terminal',rpn=>$rpn,cube=>$go_out_cube,
 			notes=>"{$rpn.aos} can be constructed by bringing $go_out_cube to the Solution");
       }
     }

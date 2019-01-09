@@ -49,7 +49,7 @@ class Play {
       when 'Terminal' {
 	if ($!rpn.defined and $!rpn.Bag.elems > 0) {
 	  $out="$tag goes out with equation {$!rpn.aos} using ";
-	  $out ~= ($!cube) ?? "cube $!cube from Unused" !! "only cubes placed on the board already";
+	  $out ~= ($!cube.defined) ?? "cube $!cube from Unused" !! "only cubes placed on the board already";
 	} else {
 	  $out="$tag calls the previous player's Bluff -- no solution is possible"; 
 	}
