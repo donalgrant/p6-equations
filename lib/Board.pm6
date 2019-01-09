@@ -15,25 +15,17 @@ class Board {
   has BagHash $.P;   # Permitted cubes
   has BagHash $.F;   # Forbidden cubes
   
-  has Str $.G='';     # goal (string of cubes)
+  has Str $.G='';    # goal (string of cubes)
 
-  multi method new( BagHash $U ) { self.bless(:$U) }
-  multi method new( Bag $B     ) { my $U=$B.BagHash;                     Board.new(:$U) }
-  multi method new( Seq $cubes ) { note "Board from Seq {$cubes.join(',')}";  my $U=BagHash.new($[$cubes]);         Board.new(:$U) }
-  multi method new( Str $cubes ) { my $U=BagHash.new($cubes.comb(/\S/)); Board.new(:$U) }
-  multi method new( List $cubes) { note "Board from List {$cubes.join(',')}"; my $U=BagHash.new($cubes.join('').comb(/\S/));  Board.new(:$U) }
+  multi method new( BagHash $U  ) { Board.new( :$U                               ) }
+  multi method new( Bag $B      ) { Board.new( U=>$B.BagHash                     ) }
+  multi method new( Seq $cubes  ) { Board.new( U=>BagHash.new($[$cubes])         ) }
+  multi method new( Str $cubes  ) { Board.new( U=>BagHash.new($cubes.comb(/\S/)) ) }
+  multi method new( List $cubes ) { Board.new( $cubes.join('')                   ) }
 
-  method clone {
-    my $U=(self.U (+) self.R (+) self.P (+) self.F (+) self.G.comb.BagHash).BagHash; # all the cubes in the original board
-    my $C=Board.new(:$U);  
-    $C.move_to_goal(self.goal) if self.goal.chars > 0;
-    $C.move_to_forbidden($_) for self.forbidden;
-    $C.move_to_required($_)  for self.required;
-    $C.move_to_permitted($_) for self.permitted;
-    return $C;
-  }
-    
-  submethod TWEAK() { $!R=BagHash.new; $!P=BagHash.new; $!F=BagHash.new }
+  method clone { Board.new(U=>self.U.clone,R=>self.R.clone,P=>self.P.clone,F=>self.F.clone,G=>self.G) }
+
+  submethod TWEAK() { $!R//=BagHash.new; $!P//=BagHash.new; $!F//=BagHash.new }
   
   method required  { $!R.kxxv }
   method permitted { $!P.kxxv }

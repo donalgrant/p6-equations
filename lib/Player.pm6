@@ -79,7 +79,7 @@ class Player {
     self.clear_solutions;
     # look for constructibility for each goal option
     for shuffle($board.goal_options($max_digits)) -> $g {
-      $B=Board.new($board.unused.join(''));              
+      $B=Board.new($board.U.clone);              
       $B.move_to_goal($g);  note "choose_goal -- trying $g";
       my Board_Solver $BS .= new($B);
       $BS.calculate_solutions($_) for (3,5);

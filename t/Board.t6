@@ -19,15 +19,26 @@ can-ok( Board.new(''), $_ ) for @board_methods;
 
 my $cube_list=qw{1 2 2 3 - +};
 
-isa-ok(Board.new($cube_list.join('')),     'Board', "Board from String");
-isa-ok(Board.new($cube_list.join(' ')),    'Board', "Board with spaces");   # ignore spaces
-isa-ok(Board.new([$cube_list]),            'Board', "Board from Array");
-isa-ok(Board.new($cube_list),              'Board', "Board from List");
-isa-ok(Board.new(Bag.new($cube_list)),     'Board', "Board from Bag");
-isa-ok(Board.new(Bag.new($cube_list).kxxv),'Board', "Board from Seq");
-isa-ok(Board.new(BagHash.new($cube_list)), 'Board', "Board from BagHash");
+my $B;
+
+dies-ok( { Board.new }, "Must specify mandatory BagHash U");
+
+isa-ok($B=Board.new(U=>BagHash.new($cube_list)),'Board', "Board constructed with named Unused");
+isa-ok($B=Board.new(U=>BagHash.new(qw{ 3 }),
+		    R=>BagHash.new(qw{ 2 + }),
+		    P=>BagHash.new(qw{ 2 2 / }),
+		    F=>BagHash.new(qw{ 0 0 0 ^ ^ @ @ * 1 3 2 2 5 7 }),
+		    G=>"4"),                       'Board', "Board with all regions specified\n{$B.display}");
+
+isa-ok(Board.new($cube_list.join('')),       'Board', "Board from String");
+isa-ok(Board.new($cube_list.join(' ')),      'Board', "Board with spaces");   # ignore spaces
+isa-ok(Board.new([$cube_list]),              'Board', "Board from Array");
+isa-ok(Board.new($cube_list),                'Board', "Board from List");
+isa-ok(Board.new(Bag.new($cube_list)),       'Board', "Board from Bag");
+isa-ok(Board.new(Bag.new($cube_list).kxxv),  'Board', "Board from Seq");
+isa-ok(Board.new(BagHash.new($cube_list)),   'Board', "Board from BagHash");
        
-my Board $B .= new($cube_list.join(' '));
+$B = Board.new($cube_list.join(' '));
 isa-ok($B,'Board',"Board from string with spaces");
 
 lives-ok({ put $B.display },"Display a board -- check for space removal");
