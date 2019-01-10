@@ -23,6 +23,11 @@ class RPN {
   method Bag     { self.Str.comb.Bag      }
   method BagHash { self.Str.comb.BagHash  }
 
+  method formable( Bag $per, Bag $req=Bag.new ) { (self.Bag (<=) ($per (+) $req))           and (self.Bag (>=) $req) }
+  method one-away( Bag $per, Bag $req=Bag.new ) { (self.Bag  (-) ($per (+) $req)).total==1  and (self.Bag (>=) $req) }
+
+  multi method same-value( RPN $r ) { return self.Numeric == $r.Numeric }
+  multi method same-value( Str $r ) { return self.Numeric == rpn_value($r) }
 }
 
 # Exported Global Functions -- not part of the RPN class itself
