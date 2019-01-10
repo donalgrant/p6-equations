@@ -1,0 +1,38 @@
+#!/usr/bin/env perl6
+
+use v6;
+use Test;
+
+my $lib;
+
+BEGIN { $lib=q{/Users/imel/gitdev/donalgrant/p6-equations/lib} }
+
+use lib $lib;
+
+use Globals;
+use RPN;
+
+use-ok 'Solutions';
+use Solutions;
+
+my @methods=qw<new save clear elems list values rpn_list found valid_for formable one-away display>;
+
+can-ok( Solutions.new, $_ ) for @methods;
+
+#my $S = Solutions.new(qw{ 11+ 22+ 33@ 40/ *42 4@3 333+ });
+
+my $S=Solutions.new;
+isa-ok( $S, 'Solutions', "Empty Solutions" );
+
+isa-ok( $S.save(RPN.new('11+')), 'Solutions', "save an RPN" );
+isa-ok( $S.save('22+'),          'Solutions', "save an RPN-string");
+
+#isa-ok( $S.save(%( '33/'=>1, '14@'=>4, '45+6-8*'=>24 ) ), 'Solutions', "save an RPN-string hash" );
+isa-ok( $S.save( ('31/', '24@', '45+7-8*') ),           'Solutions', "save an RPN-string array" );
+
+#isa-ok( $S.save(%( RPN.new('55*')=>1, RPN.new('333**')=>0, RPN.new('1234+++')=>11 ) ), 'Solutions', "save RPN hash (hash vals discarded)" );
+isa-ok( $S.save( (RPN.new('7'), RPN.new('88^'), RPN.new('93-2+')) ),                 'Solutions', "save RPN array" );
+
+lives-ok( { note $S.display }, "Can display Solutions" );
+
+done-testing;
