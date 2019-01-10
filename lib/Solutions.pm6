@@ -3,7 +3,7 @@ use v6;
 use Globals;
 use RPN;
 
-class Solutions {
+role Solutions {
   
   has Numeric %.S{Str}=();  # solutions (keys are rpn strings, values are numeric for RPN)
 
