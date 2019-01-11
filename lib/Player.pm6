@@ -46,12 +46,6 @@ class Player does Solutions {
     return $out;
   }
 
-#  method clear_solutions         { %!S        = ();    self }
-#  method save_solution(RPN $rpn) { %!S{~$rpn} = +$rpn; self }
-  
-#  method solution_list           { %!S.keys.grep({ %!S{$_}.defined }).map({ RPN.new($_) }) }
-#  method solution_found          { self.solution_list.elems > 0 }
-
   method filter_solutions( Board $B ) {
     my Board_Solver $BS .= new($B);
     for self.rpn_list { self.delete($_) unless ($BS.valid_solution($_) and $BS.doable_solution($_))  }
