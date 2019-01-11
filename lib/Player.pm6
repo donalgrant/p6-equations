@@ -1,16 +1,14 @@
 use v6;
 
 use Globals;
+use RPN;
+use Board;
+use Solutions;
+use Board_Solver;
+use Play;
 
-class Player {
+class Player does Solutions {
     
-  use RPN;
-  use Board;
-  use Board_Solver;
-  use Play;
-
-  has Numeric %.S{Str}=();  # solutions (keys are rpn strings, values are numeric for RPN)
-
   has $.name              is rw = "Nemo";
   
   has $.crazy_moves       is rw;
@@ -48,15 +46,15 @@ class Player {
     return $out;
   }
 
-  method clear_solutions         { %!S        = ();    self }
-  method save_solution(RPN $rpn) { %!S{~$rpn} = +$rpn; self }
+#  method clear_solutions         { %!S        = ();    self }
+#  method save_solution(RPN $rpn) { %!S{~$rpn} = +$rpn; self }
   
-  method solution_list           { %!S.keys.grep({ %!S{$_}.defined }).map({ RPN.new($_) }) }
-  method solution_found          { self.solution_list.elems > 0 }
+#  method solution_list           { %!S.keys.grep({ %!S{$_}.defined }).map({ RPN.new($_) }) }
+#  method solution_found          { self.solution_list.elems > 0 }
 
   method filter_solutions( Board $B ) {
     my Board_Solver $BS .= new($B);
-    for self.solution_list { %!S{~$_}:delete unless ($BS.valid_solution($_) and $BS.doable_solution($_))  }
+    for self.rpn_list { self.delete($_) unless ($BS.valid_solution($_) and $BS.doable_solution($_))  }
     self;
   }
 
@@ -69,27 +67,27 @@ class Player {
       last if $BS.found;
     }
     note "No solutions possible" unless $BS.found;
-    for $BS.list -> $rpn { self.save_solution($rpn) }
+    for $BS.list -> $rpn { self.save($rpn) }
     self;
   }
   
   # move to Board_Solver
   method choose_goal(Board $board, Int $max_digits=2) {
     my Board $B.= new('');  # Empty Board -- placeholder
-    self.clear_solutions;
+    self.clear;
     # look for constructibility for each goal option
     for shuffle($board.goal_options($max_digits)) -> $g {
       $B=Board.new($board.U.clone);              
       $B.move_to_goal($g);  note "choose_goal -- trying $g";
       my Board_Solver $BS .= new($B);
       $BS.calculate_solutions($_) for (3,5);
-      self.clear_solutions;
-      for $BS.list -> $rpn { self.save_solution($rpn) }
-      last if self.solution_list.elems > 0;
+      self.clear;
+      for $BS.list -> $rpn { self.save($rpn) }
+      last if self.found;
     }
-    return Nil unless self.solution_list.elems > 0;
+    return Nil unless self.found;
     note "Chose a goal:  {$B.goal}";
-    note "Can get this by:  {self.solution_list.map({ $_.aos }).join('  ')}";
+    note "Can get this by:  {self.rpn_list.map({ $_.aos }).join('  ')}";
     return $B.goal;
   }
 
@@ -130,11 +128,11 @@ class Player {
 	return Play.new(who=>$!name,type=>'Terminal');
       }
       when ('H') {
-	self.generate_solutions($B) unless (%!S.elems>0);
+	self.generate_solutions($B) unless (self.found);
 	my Board_Solver $BS .= new($B);
-	my @hint_list = self.solution_list.grep({ $BS.doable_solution($_) });
-	self.generate_solutions($B) unless @hint_list.elems>0;
-	if (@hint_list.elems>0) {
+	my @hint_list = self.rpn_list.grep({ $BS.doable_solution($_) });
+	self.generate_solutions($B) unless @hint_list.elems > 0;
+	if (@hint_list.elems > 0) {
 	  say "Example Solution:  {@hint_list.roll.aos}";
 	} else { say "I have no idea!" }
 	return self.manual($B);
@@ -161,9 +159,9 @@ class Player {
 
   method turn( Board $B ) {
 
-    self.generate_solutions($B) unless (%!S.elems>0);
+    self.generate_solutions($B) unless (self.found);
     
-    unless (%!S.elems>0) {
+    unless (self.found) {
       note "***I challenge -- I see no solution";
       return Play.new(who=>$!name,type=>'Terminal');
     }
@@ -172,7 +170,7 @@ class Player {
     my Numeric %still_doable{Str};
     my Numeric %not_doable{Str};
 
-    for self.solution_list -> $rpn { $BS.doable_solution($rpn) ?? ( %still_doable{~$rpn} = +$rpn ) !! ( %not_doable{~$rpn} = +$rpn ) }
+    for self.rpn_list -> $rpn { $BS.doable_solution($rpn) ?? ( %still_doable{~$rpn} = +$rpn ) !! ( %not_doable{~$rpn} = +$rpn ) }
 
     if (%still_doable.elems > 0) {
       # could possibly extend doable solutions here via add / replace
@@ -187,7 +185,7 @@ class Player {
 	      note "replacement for ($r) is ($new_rpn)";
 	      my RPN $rep_rpn .=new($new_rpn);
 	      %still_doable{$new_rpn} = +$rep_rpn if $BS.doable_solution($rep_rpn);  # make sure -- not sure we need the call to $BS
-	      self.save_solution($rep_rpn);
+	      self.save($rep_rpn);
 	      if (BagHash.new($cube) (<=) $B.U) {
 		return Play.new(who=>$!name,type=>'Move',dest=>'Forbidden',cube=>$cube,rpn=>$rep_rpn,
 				notes=>"I can replace the $cube in $r to get $rep_rpn");
@@ -203,10 +201,10 @@ class Player {
 	my $missing = $BS.cubes-missing_for( RPN.new($r) );
 	if ($missing.elems > 0) {
 	  note "{RPN.new($r).aos} is no longer doable -- needs {$missing.kxxv}";
-	  for self.find_replacement($B,$missing,RPN.new($r)) -> $new_rpn {
+	  for self.find_replacement($B,$missing.BagHash,RPN.new($r)) -> $new_rpn {
 	    my RPN $rpn .=new($new_rpn);
 	    %still_doable{$new_rpn} = +$rpn if $BS.doable_solution($rpn);  # make sure -- not sure we need the call to $BS
-	    self.save_solution($rpn);
+	    self.save($rpn);
 	  }
 	} else { # must be a new required which is not part of the RPN
 	  my $extra_req = $BS.req-not-in( RPN.new($r) );
@@ -240,7 +238,7 @@ class Player {
   # maybe make this whole thing a gather / take?
   method find_replacement(Board $B, BagHash $missing, RPN $rpn) {
     return [] unless $B.R (<=) $rpn.Bag;   # must be able to use all required cubes
-    if ($missing.total>1) {
+    if ($missing.total > 1) {
       note "find_replacement for $rpn is missing ({$missing.kxxv}) more than one cube";
       return [];
     }
@@ -251,13 +249,12 @@ class Player {
       # Set up a Board_Solver to try to find missing cube
 #      note "creating a bag from missing={$missing.kxxv}; allowed={$B.allowed.kxxv}; rpn={$rpn.Bag.kxxv}";
 #      note "bag sums are:  missing+allowed={($missing (+) $B.allowed).kxxv}; rpn-missing={($rpn.Bag (-) $missing).kxxv}";
-      my BagHash $b = ($missing (+) $B.allowed) (-) ($rpn.BagHash (-) $missing);  # add missing for goal
 #      note "Setting up a Board with cubes {$b.kxxv}, which should include missing cube $cube";
-      my Board_Solver $BS .= new(Board.new($b).move_to_goal($cube));
+      my Board_Solver $BS .= new(Board.new(U=>($B.allowed (-) ($rpn.Bag (-) $missing)).BagHash,G=>$cube));
       for 3,5 -> $ncubes {  # no need for 1, otherwise not really a replacement!
 	$BS.calculate_solutions($ncubes);
 	my @rpn_list = gather {
-	  for $BS.list -> $r {
+	  for $BS.rpn_list -> $r {
 	    next if $cube (elem) $r.Bag;   # don't replace with the same cube!
 	    # create a new RPN by replacing in the original rpn
 	    my $new_rpn = $rpn.Str;  $new_rpn~~s/$cube/{~$r}/;
@@ -286,11 +283,11 @@ class Player {
     return self.crazy_move($B) if chance($!crazy_moves) and $B.U.elems > 1;    # non-thinking move -- has to be more than one cube left
 
     # this shouldn't actually happen here
-    unless (self.solution_found) { return Play.new(who=>$!name,type=>'Terminal',note=>"Challenge the bluff -- no solution")  }
+    unless (self.found) { return Play.new(who=>$!name,type=>'Terminal',note=>"Challenge the bluff -- no solution")  }
 
     my Board_Solver $BS .= new($B);
 
-    for self.solution_list -> $rpn {
+    for self.rpn_list -> $rpn {
       if $BS.on-board_solution($rpn) {
 	return Play.new(who=>$!name,type=>'Terminal',rpn=>$rpn,notes=>"{$rpn.aos} is already on the board");
       }
@@ -311,7 +308,7 @@ class Player {
       return Play.new(dest=>'Required', |%play) if chance($!force_required);
       return Play.new(dest=>'Permitted',|%play);
     } else { # do a move to forbidden if possible, otherwise permitted
-      my $excess=$B.U (-) $target_rpn.Bag;
+      my $excess=$target_rpn.excess($B.U.Bag);
       return Play.new(dest=>'Forbidden',cube=>$excess.roll,  notes=>'excess',   |%play) if $excess.total > 0;
       return Play.new(dest=>'Permitted',cube=>$B.unused.roll,notes=>'remaining',|%play);
     }
@@ -333,9 +330,9 @@ class Player {
 
   method target_rpn(Board $B) {
     # should target rpn which uses permitted, since opponent might, all things the same, use a shorter rpn
-    sub target_fn($a) { ((Bag.new($a.list) (-) $B.R) (-) $B.P).total }
+    sub target_fn($a) { (($a.Bag (-) $B.R) (-) $B.P).total }
     sub target_sort($a,$b) { ($a.Str.chars <=> $b.Str.chars) or (&target_fn($a) <=> &target_fn($b)) }
-    self.solution_list.sort( &target_sort ).[0];
+    self.rpn_list.sort( &target_sort ).[0];
   }
 
     # need to work out bonus move for computer, triggered when forbidden move is available

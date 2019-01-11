@@ -69,6 +69,10 @@ isa-ok( @R[0], 'RPN', "First element is RPN" );
 
 ok( $v == @R.map({ (+$_).floor }).Set, "RPN values match values" );
 
+isa-ok( $S.delete(@R[0]),      'Solutions', "can delete RPN" );
+isa-ok( $S.delete(@R[1].Str),      'Solutions', "can delete RPN Str");
+is( $S.elems, 18, "Number of elements reduced by one after two deletions, one duplicate" );
+
 lives-ok( { note $S.display }, "Can display Solutions" );
 
 done-testing;

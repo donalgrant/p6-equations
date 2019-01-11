@@ -30,7 +30,9 @@ class RPN {
   method one-away(    Bag $per, Bag $req=Bag.new ) { (self.Bag  (-) ($per (+) $req)).total==1  and (self.Bag (>=) $req) }
   
   method cubes-to-go( Bag $per, Bag $req=Bag.new ) { ( self.Bag (>=) $req ) ?? ( (self.Bag (-) $req) (-) $per ) !! Nil }
-  method req-missing( Bag $req )                   { $req (-) self.Bag } 
+  method req-missing( Bag $req )                   { $req (-) self.Bag }
+  
+  method excess( Bag $all ) { $all (-) self.Bag }
 }
 
 # Exported Global Functions -- not part of the RPN class itself

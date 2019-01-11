@@ -22,7 +22,7 @@ class Board_Solver does Solutions {
   method min_solution_cubes { self!solution_cubes($!B.required, &max) }
   method max_solution_cubes { self!solution_cubes($!B.available,&min) }
 
-  method valid_solution(    RPN $rpn ) { +$rpn == $!B.goal }
+  method valid_solution(    RPN $rpn ) { $rpn.Numeric == $!B.goal }
   method doable_solution(   RPN $rpn ) { $rpn.formable($!B.P.Bag (+) $!B.U.Bag,$!B.R.Bag) }
   method on-board_solution( RPN $rpn ) { $rpn.formable($!B.P.Bag,              $!B.R.Bag) }
   
