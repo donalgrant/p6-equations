@@ -18,12 +18,12 @@ my ($r, $b, $g, $k)=Red_Cube.new(), Blue_Cube.new(), Green_Cube.new(), Black_Cub
 my Cube_Bag $cb .= new([$c,$r,$b,$g,$k]);
 
 subtest "Construction" => {
-  with 'Cube'       { isa-ok $c, $_, $_ }
-  with 'Red_Cube'   { isa-ok $r, $_, $_ }
-  with 'Blue_Cube'  { isa-ok $b, $_, $_ }
-  with 'Green_Cube' { isa-ok $g, $_, $_ } 
-  with 'Black_Cube' { isa-ok $k, $_, $_ }
-  with 'Cube_Bag'   { isa-ok $cb,$_, $_ }
+  given 'Cube'       { isa-ok $c, $_, $_ }
+  given 'Red_Cube'   { isa-ok $r, $_, $_ }
+  given 'Blue_Cube'  { isa-ok $b, $_, $_ }
+  given 'Green_Cube' { isa-ok $g, $_, $_ } 
+  given 'Black_Cube' { isa-ok $k, $_, $_ }
+  given 'Cube_Bag'   { isa-ok $cb,$_, $_ }
 }
 
 subtest "Methods" => {
