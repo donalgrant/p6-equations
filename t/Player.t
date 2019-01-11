@@ -22,8 +22,8 @@ use-ok 'Play';
 use Play;
 
 subtest "Methods" => {
-  my @player_methods=qw< new choose_goal manual >;  
-  can-ok( Player.new, $_ ) for @player_methods;
+  my @methods=qw< new choose_goal manual >;  
+  can-ok( Player.new, $_ ) for @methods;
 }
 
 my $P=Player.new;

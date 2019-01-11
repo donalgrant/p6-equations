@@ -5,7 +5,7 @@ class Cube {
   has $.faces;    # List of faces -- won't change after initialization
   has $.showing;  # Which of the faces is up any time -- changed by .roll method
 
-  method roll                  { $!showing=$!faces.pick; self }
+  method roll                  { $!showing=$!faces.roll; self }
   method new ( $faces )        { self.bless( :$faces ) }
   submethod BUILD ( :$!faces ) { self.roll }
   
