@@ -13,7 +13,7 @@ use Board_Solver;
 use Board;
 use RPN;
 
-my @methods=qw<new clear_solutions solution_list calculate_solutions min_solution_cubes max_solution_cubes valid_solution doable_solution>;
+my @methods=qw<new clear list calculate_solutions min_solution_cubes max_solution_cubes valid_solution doable_solution>;
 
 can-ok( Board_Solver.new(Board.new('')), $_ ) for @methods;
 
@@ -30,10 +30,10 @@ $B.move_to_goal('3');
 
 lives-ok({ $BS.calculate_solutions(3) },"Can calculate a list of solutions; Board persists");
 
-ok $BS.solution_list == qw{ 12+ 21+ }, "List of solutions for {$B.goal}";
+ok $BS.list == qw{ 12+ 21+ }, "List of solutions for {$B.goal}";
 
-$BS.clear_solutions;
-is $BS.solution_list, Empty, "Empty solution list";
+$BS.clear;
+is $BS.list, Empty, "Empty solution list";
 
 $B = Board.new(qw{ 1 2 2 3 3 3 8 + + - / * * ^ });
 $B.move_to_goal('8');

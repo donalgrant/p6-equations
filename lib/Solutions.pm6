@@ -7,8 +7,6 @@ role Solutions {
   
   has Numeric %.S{Str}=();  # solutions (keys are rpn strings, values are numeric for RPN)
 
-  multi method new( @rpn_str ) { self.new( S=>@rpn_str.map({ RPN.new($_) }).grep({ $_.defined }).map({ (~$_,+$_) }) ) }
-
   multi method save(Any)      { self }  # nop in case an attempt to save undefined RPN
   multi method save(RPN $rpn) { %!S{~$rpn} = +$rpn if $rpn.defined; self }  # filter out invalid RPNs
   multi method save(Str $rpn) { self.save(RPN.new($rpn)) }
