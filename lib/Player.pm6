@@ -66,10 +66,10 @@ class Player {
     loop (my $rpn_length=$BS.min_solution_cubes; $rpn_length <= $BS.max_solution_cubes; $rpn_length+=2) {
       last if $rpn_length > $cube_limit;
       $BS.calculate_solutions($rpn_length);
-      last if $BS.solution_found;
+      last if $BS.found;
     }
-    note "No solutions possible" unless $BS.solution_found;
-    for $BS.solution_list -> $rpn { self.save_solution($rpn) }
+    note "No solutions possible" unless $BS.found;
+    for $BS.list -> $rpn { self.save_solution($rpn) }
     self;
   }
   
@@ -84,7 +84,7 @@ class Player {
       my Board_Solver $BS .= new($B);
       $BS.calculate_solutions($_) for (3,5);
       self.clear_solutions;
-      for $BS.solution_list -> $rpn { self.save_solution($rpn) }
+      for $BS.list -> $rpn { self.save_solution($rpn) }
       last if self.solution_list.elems > 0;
     }
     return Nil unless self.solution_list.elems > 0;
@@ -257,7 +257,7 @@ class Player {
       for 3,5 -> $ncubes {  # no need for 1, otherwise not really a replacement!
 	$BS.calculate_solutions($ncubes);
 	my @rpn_list = gather {
-	  for $BS.solution_list -> $r {
+	  for $BS.list -> $r {
 	    next if $cube (elem) $r.Bag;   # don't replace with the same cube!
 	    # create a new RPN by replacing in the original rpn
 	    my $new_rpn = $rpn.Str;  $new_rpn~~s/$cube/{~$r}/;
