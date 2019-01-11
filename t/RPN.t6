@@ -171,4 +171,7 @@ ok( $rpn.req-missing( Bag.new(qw{ 5 4 3 }) )                 == Bag.new,        
 ok( $rpn.req-missing( Bag.new(qw{ 5 4 3 2 2 1 + + - ^ @ }) ) == Bag.new,            "no required missing for exact match");
 ok( $rpn.req-missing( Bag.new(qw{ 6 5 * }) )                 == Bag.new(qw{ 6 * }), "missing two cubes");
 
+ok( ops_bag(Bag.new(qw{ 1 2 2 3 4 5 + + / / * * * ^ @ })) == Bag.new(qw{ + + / / * * * ^ @ }), "extract Bag of ops");
+ok( num_bag(Bag.new(qw{ 1 2 2 3 4 5 + + / / * * * ^ @ })) == Bag.new(qw{ 1 2 2 3 4 5 }),       "extract Bag of digits");
+
 done-testing;

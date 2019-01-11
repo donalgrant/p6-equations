@@ -65,7 +65,12 @@ grammar WF_RPN {
   token rpn_dig  { <digit> { $*DGT_CNT++ } }
   token rpn_op   { <op>    { $*OP_CNT++  } <?{ $*OP_CNT <= $*DGT_CNT }> }
 }
+
+sub filter_bag(Bag $b, &filter) { Bag.new( $b.kxxv.grep({ &filter }) ) }
   
+sub ops_bag(Bag $b) is export { filter_bag($b, &op    ) }
+sub num_bag(Bag $b) is export { filter_bag($b, &digit ) } 
+
 sub rpn_value ($rpn) is export { 
   return Nil unless $rpn.defined;
   return %RPN_CACHE{$rpn} if %RPN_CACHE{$rpn}.defined;
