@@ -137,6 +137,9 @@ ok valid_aos('7'),                "outlier case for aos:  a single number";
 
 $rpn=RPN.new('54+32+12@^-');
 
+ok( $rpn.same-value('08-2*'),            "two equations give same value");
+ok( $rpn.same-value(RPN.new('25-6*2+')), "two RPN's yield true same-value");
+
 ok(  $rpn.formable( Bag.new(qw{ 5 4 3 2 2 1 + + - ^ @ }) ),             "$rpn formable by exact bag of cubes" );
 ok(  $rpn.formable( Bag.new(qw{ 5 4 3 2 2 1 + + - ^ @ 1 2 3 4 / + }) ), "$rpn formable by excess bag of cubes" );
 nok( $rpn.formable( Bag.new(qw{ 5 4 3 2 2 1 + + - ^ }) ),               "$rpn not formable by too-small bag of cubes" );
@@ -157,7 +160,15 @@ nok( $rpn.one-away( Bag.new(qw{ 5 4 3 2 2 1 + - ^ @ 6 7 }), Bag.new(qw{ + }) ), 
 nok( $rpn.one-away( Bag.new(qw{ 5 4 3 2 1 + - ^ @ }),       Bag.new(qw{ * }) ),   "$rpn is one cube away from being a solution, but missing required cube");
 nok( $rpn.one-away( Bag.new(qw{ 5 4 3 2 2 1 - ^ @ }),       Bag.new(qw{ + + }) ), "exact cubes, including required, for $rpn is not one-cube away");
 
-ok( $rpn.same-value('08-2*'),            "two equations give same value");
-ok( $rpn.same-value(RPN.new('25-6*2+')), "two RPN's yield true same-value");
+ok( $rpn.cubes-to-go( Bag.new(qw{ 5 4 3 2 1 + - ^ @ }) )                       == Bag.new(qw{ 2 + }), "cubes-to-go for $rpn");
+ok( $rpn.cubes-to-go( Bag.new(qw{ 5 4 3 2 1 + - ^ @ }), Bag.new(qw{ 2 }) )     == Bag.new(qw{ + }),   "cubes-to-go, with required cube");
+ok( $rpn.cubes-to-go( Bag.new(qw{ 5 4 3 2 1 + - ^ @ 6 7 }) )                   == Bag.new(qw{ 2 + }), "cubes-to-go, with excess");
+ok( $rpn.cubes-to-go( Bag.new(qw{ 5 4 3 2 2 1 + + - ^ @ }) )                   == Bag.new,            "cubes-to-go empty");
+ok( $rpn.cubes-to-go( Bag.new(qw{ 5 4 3 2 2 1 + + - ^ @ }), Bag.new(qw{ 2 }) ) == Bag.new,            "cubes-to-go, with required and excess");
+nok($rpn.cubes-to-go( Bag.new(qw{ 5 4 3 2 2 1 + + - ^ @ }), Bag.new(qw{ / }) ),                       "cubes-to-go fails required");
+
+ok( $rpn.req-missing( Bag.new(qw{ 5 4 3 }) )                 == Bag.new,            "no required missing");
+ok( $rpn.req-missing( Bag.new(qw{ 5 4 3 2 2 1 + + - ^ @ }) ) == Bag.new,            "no required missing for exact match");
+ok( $rpn.req-missing( Bag.new(qw{ 6 5 * }) )                 == Bag.new(qw{ 6 * }), "missing two cubes");
 
 done-testing;
