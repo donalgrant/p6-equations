@@ -5,16 +5,30 @@ unit module Globals;
 use Algorithm::Combinatorics:from<Perl5> qw<tuples combinations permutations>;
 
 our %opt;  # global options
+our %debug; # debug keywords
 
 multi sub opt( $key ) is export { %opt{$key}:exists ?? %opt{$key} !! False }
 multi sub opt()       is export { %opt }
 
-multi sub set_opt( $key ) is export { %opt{$key}=True }
-multi sub set_opt( @key ) is export { set_opt($_) for @key }
 multi sub set_opt( *%o  ) is export { %opt{$_}=%o{$_} for %o<>:k }
+multi sub set_opt( $key ) is export { %opt{$key}=True  }
+multi sub set_opt( @key ) is export { set_opt($_) for @key }
 
 multi sub clr_opt( $key ) is export { %opt{$key}:delete }
 multi sub clr_opt( @key ) is export { clr_opt($_) for @key }
+multi sub clr_opt()       is export { %opt=() }
+
+multi sub debug( $key )   is export { %debug{$key}:exists ?? %debug{$key} !! False }
+multi sub debug( @key )   is export { so all %debug{@key}.grep( *.defined ) }
+multi sub debug()         is export { %debug<>:k }
+
+multi sub set_debug( *%o  ) is export { %debug{$_}=%o{$_} for %o<>:k }
+multi sub set_debug( $key ) is export { %debug{$key}=True }
+multi sub set_debug( @key ) is export { set_debug($_) for @key }
+
+multi sub clr_debug( $key ) is export { %debug{$key}:delete }
+multi sub clr_debug( @key ) is export { clr_debug($_) for @key }
+multi sub clr_debug()       is export { %debug=() }
 
 sub caller() is export { Backtrace.new.list }
 
