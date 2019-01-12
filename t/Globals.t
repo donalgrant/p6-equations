@@ -13,6 +13,27 @@ use lib $lib;
 use-ok 'Globals', "Make sure we can import the Globals.pm6 module";
 use Globals;
 
+subtest "Global Options" => {
+  is opt, Empty,  "Start with empty option list";
+  is opt('test-1'), False, "option test-1 not yet set is False";
+  is opt('test-1'), False, "...even after the second check";
+  
+  set_opt('test-1');
+  is opt('test-1'), True, "option 'test-1' set True";
+  set_opt( qw{ test-2 test-3 test-4 } );
+  is opt('test-3'), True, "option 'test-3' set True";
+  set_opt('test-3');
+  is opt('test-3'), True, "setting 'test-3' again doesn't change it";
+  set_opt( t1=>True, t2=>False, t3=>4, t4=>'Blue' );
+  ok opt.keys.sort == qw{ test-1 test-2 test-3 test-4 t1 t2 t3 t4 }.sort, "options set so far";
+  is opt('t2'), False,  "Setting option to False works";
+  is opt('t4'), 'Blue', "Setting option to a string works";
+  clr_opt('t4');
+  is opt('t4'), False,  "Clearing an option sets it to False";
+  clr_opt('t2');
+  ok opt.keys.sort == qw{ test-1 test-2 test-3 test-4 t1 t3 }, "two options removed";
+}
+
 lives-ok { say caller.list.join('') }, "caller";
 
 lives-ok { msg("test message") }, "test message";
