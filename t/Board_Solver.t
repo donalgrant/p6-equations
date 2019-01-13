@@ -8,14 +8,16 @@ my $lib;
 BEGIN { $lib=q{/Users/imel/gitdev/donalgrant/p6-equations/lib} }
 
 use lib $lib;
+use Globals;
 use-ok 'Board_Solver';
 use Board_Solver;
 use Board;
 use RPN;
 
-my @methods=qw<new clear list calculate_solutions min_solution_cubes max_solution_cubes valid_solution doable_solution>;
-
-can-ok( Board_Solver.new(Board.new('')), $_ ) for @methods;
+subtest "methods" => {
+  my @methods=qw<new clear list calculate_solutions min_solution_cubes max_solution_cubes valid_solution doable_solution>;
+  can-ok( Board_Solver.new(Board.new('')), $_ ) for @methods;
+}
 
 my $cube_list=qw{ 1 2 3 + };
 my Board $B .= new($cube_list);
@@ -23,61 +25,66 @@ my Board $B .= new($cube_list);
 isa-ok($B, 'Board', "Board from $cube_list");
 
 my Board_Solver $BS .= new($B);
-isa-ok($BS,'Board_Solver',"Board_Solver from\n{$B.display}");
-dies-ok( { $B.calculate_solutions(5) }, "Attempt to Calculate Solutions on Board without goal should fail." );
 
-$B.move_to_goal('3');
+subtest "Construction" => {
+  isa-ok($BS,'Board_Solver',"Board_Solver from\n{$B.display}");
+  dies-ok( { $B.calculate_solutions(5) }, "Attempt to Calculate Solutions on Board without goal should fail." );
+}
 
-lives-ok({ $BS.calculate_solutions(3) },"Can calculate a list of solutions; Board persists");
+subtest "goal analysis" => {
+  $B.move_to_goal('3');
+  
+  lives-ok({ $BS.calculate_solutions(3) },"Can calculate a list of solutions; Board persists");
+  
+  ok $BS.list == qw{ 12+ 21+ }, "List of solutions for {$B.goal}";
+  
+  $BS.clear;
+  is $BS.list, Empty, "Empty solution list";
 
-ok $BS.list == qw{ 12+ 21+ }, "List of solutions for {$B.goal}";
+  $B = Board.new(qw{ 1 2 2 3 3 3 8 + + - / * * ^ });
+  $B.move_to_goal('8');
+  $B.move_to_required($_)  for qw{ 1 2 2 * };
+  $B.move_to_permitted($_) for qw{ 3 };
+  $B.move_to_forbidden($_) for qw{ / };
+  
+  $BS = Board_Solver.new($B);
+  
+  msg $B.display;
 
-$BS.clear;
-is $BS.list, Empty, "Empty solution list";
+  is $BS.min_solution_cubes, 5,  "min solution cubes correct";       
+  is $BS.max_solution_cubes, 11, "max solution cubes correct";
+  
+  ok  $BS.valid_solution( RPN.new('8') ), 'check identity solution for validity';
+  ok  $BS.valid_solution( RPN.new('222**') ), 'unavailable solution can still be valid';
+  nok $BS.valid_solution( RPN.new('22*') ), 'available solution may also be invalid';
+  
+  ok  $BS.valid_solution(  RPN.new('23^1/') ),       'valid solution from existing (but forbidden) cubes';
+  nok $BS.doable_solution( RPN.new('23^1/') ),       'unavaible solution even though cubes exist and valid';
+  
+  ok  $BS.valid_solution(  RPN.new('23^') ), 'solution violating required cubes can be valid';
+  nok $BS.doable_solution( RPN.new('23^') ), 'solution violating required cubes is not doable';
+  
+  ok  $BS.cubes-missing_for( RPN.new('252-^') ) == qw{ 5 }.Bag, "solution with cubes which aren't available";
 
-$B = Board.new(qw{ 1 2 2 3 3 3 8 + + - / * * ^ });
-$B.move_to_goal('8');
-$B.move_to_required($_)  for qw{ 1 2 2 * };
-$B.move_to_permitted($_) for qw{ 3 };
-$B.move_to_forbidden($_) for qw{ / };
+  my RPN $rpn .= new('231*^33-2*+');
 
-$BS = Board_Solver.new($B);
+  ok  $BS.valid_solution(  $rpn ), 'complicated but valid solution';
+  ok  $BS.doable_solution( $rpn ), 'complicated but doable solution';
+  
+  ok  $BS.cubes-to-go_for( $rpn ) == qw{ 3 3 * - + ^ }.Bag, "cubes to go for $rpn";
+  
+  nok $BS.go-out_check( $rpn ),    "can't go out with $rpn yet";
 
-note $B.display;
+  $B.move_to_permitted($_) for qw{ 3 3 * - + };
+  msg $B.display;
 
-is $BS.min_solution_cubes, 5,  "min solution cubes correct";       
-is $BS.max_solution_cubes, 11, "max solution cubes correct";
+  is  $BS.go-out_check( $rpn ), '^', "one cube from solution for $rpn";
+  nok $BS.on-board_solution( $rpn ), "which means it's not on the board yet";
 
-ok  $BS.valid_solution( RPN.new('8') ), 'check identity solution for validity';
-ok  $BS.valid_solution( RPN.new('222**') ), 'unavailable solution can still be valid';
-nok $BS.valid_solution( RPN.new('22*') ), 'available solution may also be invalid';
+  $B.move_to_required($_) for qw{ ^ };
+  msg $B.display;
+  ok  $BS.on-board_solution($rpn),   "now it's a solution on the board";
+  is  $BS.go-out_check($rpn), '',    "and go-out check passes with empty cube returned";
+}
 
-ok  $BS.valid_solution(  RPN.new('23^1/') ),       'valid solution from existing (but forbidden) cubes';
-nok $BS.doable_solution( RPN.new('23^1/') ),       'unavaible solution even though cubes exist and valid';
-
-ok  $BS.valid_solution(  RPN.new('23^') ), 'solution violating required cubes can be valid';
-nok $BS.doable_solution( RPN.new('23^') ), 'solution violating required cubes is not doable';
-
-ok  $BS.cubes-missing_for( RPN.new('252-^') ) == qw{ 5 }.Bag, "solution with cubes which aren't available";
-
-my RPN $rpn .= new('231*^33-2*+');
-
-ok  $BS.valid_solution(  $rpn ), 'complicated but valid solution';
-ok  $BS.doable_solution( $rpn ), 'complicated but doable solution';
-
-ok  $BS.cubes-to-go_for( $rpn ) == qw{ 3 3 * - + ^ }.Bag, "cubes to go for $rpn";
-
-nok $BS.go-out_check( $rpn ),    "can't go out with $rpn yet";
-
-$B.move_to_permitted($_) for qw{ 3 3 * - + };
-note $B.display;
-
-is  $BS.go-out_check( $rpn ), '^', "one cube from solution for $rpn";
-nok $BS.on-board_solution( $rpn ), "which means it's not on the board yet";
-
-$B.move_to_required($_) for qw{ ^ };
-note $B.display;
-ok  $BS.on-board_solution($rpn),   "now it's a solution on the board";
-is  $BS.go-out_check($rpn), '',    "and go-out check passes with empty cube returned";
-			   
 done-testing;

@@ -60,7 +60,7 @@ class Player does Solutions {
       $BS.calculate_solutions($rpn_length);
       last if $BS.found;
     }
-    note "No solutions possible" unless $BS.found;
+    msg "No solutions possible" unless $BS.found;
     for $BS.list -> $rpn { self.save($rpn) }
     self;
   }
@@ -72,7 +72,8 @@ class Player does Solutions {
     # look for constructibility for each goal option
     for shuffle($board.goal_options($max_digits)) -> $g {
       $B=Board.new($board.U.clone);              
-      $B.move_to_goal($g);  note "choose_goal -- trying $g";
+      $B.move_to_goal($g);
+      msg "choose_goal -- trying $g" if debug_fn;
       my Board_Solver $BS .= new($B);
       $BS.calculate_solutions($_) for (3,5);
       self.clear;
@@ -80,8 +81,8 @@ class Player does Solutions {
       last if self.found;
     }
     return Nil unless self.found;
-    note "Chose a goal:  {$B.goal}";
-    note "Can get this by:  {self.rpn_list.map({ $_.aos }).join('  ')}";
+    msg "Chose a goal:  {$B.goal}";
+    msg "Can get this by:  {self.rpn_list.map({ $_.aos }).join('  ')}" if debug_fn;
     return $B.goal;
   }
 
@@ -156,7 +157,7 @@ class Player does Solutions {
     self.generate_solutions($B) unless (self.found);
     
     unless (self.found) {
-      note "***I challenge -- I see no solution";
+      msg "***I challenge -- I see no solution";
       return Play.new(who=>$!name,type=>'Terminal');
     }
     
@@ -173,10 +174,10 @@ class Player does Solutions {
       # by requiring something from the new one
       for %still_doable.keys -> $r {
 	if (chance($!extend_solutions)) {  # make a parameter
-	  note "Replacing $r; Board is \n {$B.display}";
+	  msg "Replacing $r; Board is \n {$B.display}" if debug_fn;
 	  for $r.comb -> $cube {
 	    for self.find_replacement($B,BagHash.new($cube),RPN.new($r)) -> $new_rpn {
-	      note "replacement for ($r) is ($new_rpn)";
+	      msg "replacement for ($r) is ($new_rpn)" if debug_fn;
 	      my RPN $rep_rpn .=new($new_rpn);
 	      %still_doable{$new_rpn} = +$rep_rpn if $BS.doable_solution($rep_rpn);  # make sure -- not sure we need the call to $BS
 	      self.save($rep_rpn);
@@ -194,7 +195,7 @@ class Player does Solutions {
       for %not_doable.keys -> $r {
 	my $missing = $BS.cubes-missing_for( RPN.new($r) );
 	if ($missing.elems > 0) {
-	  note "{RPN.new($r).aos} is no longer doable -- needs {$missing.kxxv}";
+	  msg "{RPN.new($r).aos} is no longer doable -- needs {$missing.kxxv}" if debug_fn;
 	  for self.find_replacement($B,$missing.BagHash,RPN.new($r)) -> $new_rpn {
 	    my RPN $rpn .=new($new_rpn);
 	    %still_doable{$new_rpn} = +$rpn if $BS.doable_solution($rpn);  # make sure -- not sure we need the call to $BS
@@ -202,7 +203,7 @@ class Player does Solutions {
 	  }
 	} else { # must be a new required which is not part of the RPN
 	  my $extra_req = $BS.req-not-in( RPN.new($r) );
-	  note "{RPN.new($r).aos} is no longer doable -- does not have required {$extra_req.kxxv}";
+	  msg "{RPN.new($r).aos} is no longer doable -- does not have required {$extra_req.kxxv}" if debug_fn;
 	  # only do this (for now?) for a single extra required element
 	  
 	  # can we extend the formula to include the new number using
@@ -220,7 +221,7 @@ class Player does Solutions {
 	  
 	}
       }
-      note $B.display if %not_doable.elems > 0;
+      msg $B.display if %not_doable.elems > 0;
       self.generate_solutions($B) unless %still_doable.elems > 0;
     }
 
@@ -233,7 +234,7 @@ class Player does Solutions {
   method find_replacement(Board $B, BagHash $missing, RPN $rpn) {
     return [] unless $B.R (<=) $rpn.Bag;   # must be able to use all required cubes
     if ($missing.total > 1) {
-      note "find_replacement for $rpn is missing ({$missing.kxxv}) more than one cube";
+      msg "find_replacement for $rpn is missing ({$missing.kxxv}) more than one cube" if debug_fn;
       return [];
     }
     my ($cube)=$missing.kxxv;
@@ -241,9 +242,9 @@ class Player does Solutions {
       # can we construct a missing number with a 3 or 5 element equation
       #     from available cubes not used by RPN?	
       # Set up a Board_Solver to try to find missing cube
-#      note "creating a bag from missing={$missing.kxxv}; allowed={$B.allowed.kxxv}; rpn={$rpn.Bag.kxxv}";
-#      note "bag sums are:  missing+allowed={($missing (+) $B.allowed).kxxv}; rpn-missing={($rpn.Bag (-) $missing).kxxv}";
-#      note "Setting up a Board with cubes {$b.kxxv}, which should include missing cube $cube";
+      msg "creating a bag from missing={$missing.kxxv}; allowed={$B.allowed.kxxv}; rpn={$rpn.Bag.kxxv}" if debug_fn;
+      msg "bag sums are:  missing+allowed={($missing (+) $B.allowed).kxxv}; rpn-missing={($rpn.Bag (-) $missing).kxxv}" if debug_fn;
+      msg "Setting up a Board with cubes {$B.kxxv}, which should include missing cube $cube" if debug_fn;
       my Board_Solver $BS .= new(Board.new(U=>($B.allowed (-) ($rpn.Bag (-) $missing)).BagHash,G=>$cube));
       for 3,5 -> $ncubes {  # no need for 1, otherwise not really a replacement!
 	$BS.calculate_solutions($ncubes);
@@ -259,7 +260,7 @@ class Player does Solutions {
       }
       return [];
     }
-#    note "missing cube $cube is an operator";
+    msg "missing cube $cube is an operator" if debug_fn;
     return [] if $cube~~/<[-/]>/;
     # can we construct a missing operator with an equation representing
     #     is inverse?  (can't do it for '-' and '/')
@@ -294,7 +295,8 @@ class Player does Solutions {
 
     # now find a good play
     # would like to target destruction (culling) of competing rpn's if possible.
-    my $target_rpn = self.target_rpn($B);  note "I'm working towards {$target_rpn.aos}";
+    my $target_rpn = self.target_rpn($B);
+    msg "I'm working towards {$target_rpn.aos}" if debug_fn;
     my $pos_options = $BS.cubes-to-go_for($target_rpn);
     my %play=(who=>$!name,type=>'Move',rpn=>$target_rpn);
     if ($pos_options.total>2) { # can consider a move to req or perm -- won't cause a "go-out" for other player

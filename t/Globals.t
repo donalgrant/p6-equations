@@ -15,13 +15,16 @@ use Globals;
 
 subtest "Global Options" => {
   is opt, Empty,  "Start with empty option list";
-  is opt('test-1'), False, "option test-1 not yet set is False";
-  is opt('test-1'), False, "...even after the second check";
+  nok opt('test-1'), "option test-1 not yet set is Nil";
+  nok opt('test-1'), "...even after the second check";
   
   set_opt('test-1');
   is opt('test-1'), True, "option 'test-1' set True";
   set_opt( qw{ test-2 test-3 test-4 } );
   is opt('test-3'), True, "option 'test-3' set True";
+  clr_opt('test-1','test-2','test-3','test-4');
+  nok opt('test-3'), "options cleared";
+  set_opt('test-1','test-2','test-3','test-4');
   set_opt('test-3');
   is opt('test-3'), True, "setting 'test-3' again doesn't change it";
   set_opt( t1=>True, t2=>False, t3=>4, t4=>'Blue' );
@@ -29,7 +32,7 @@ subtest "Global Options" => {
   is opt('t2'), False,  "Setting option to False works";
   is opt('t4'), 'Blue', "Setting option to a string works";
   clr_opt('t4');
-  is opt('t4'), False,  "Clearing an option sets it to False";
+  nok opt('t4'),  "Clearing an option sets it to Nil";
   clr_opt('t2');
   ok opt.keys.sort == qw{ test-1 test-2 test-3 test-4 t1 t3 }, "two options removed";
   clr_opt;
@@ -38,13 +41,15 @@ subtest "Global Options" => {
 
 subtest "debug labels" => {
   is debug, Empty,  "Start with empty debug list";
-  is debug('test-1'), False, "debug label test-1 not yet set is False";
-  is debug('test-1'), False, "...even after the second check";
-  
+  nok debug('test-1'), "debug label test-1 not yet set is Nil";
+  nok debug('test-1'), "...even after the second check";
   set_debug('test-1');
   is debug('test-1'), True, "debug label 'test-1' set True";
   set_debug( qw{ test-2 test-3 test-4 } );
   is debug('test-3'), True, "debug label 'test-3' set True";
+  clr_debug('test-1','test-2','test-3','test-4');
+  nok debug('test-3'), "debug label cleared";
+  set_debug('test-1','test-2','test-3','test-4');
   set_debug('test-3');
   is debug('test-3'), True, "setting 'test-3' again doesn't change it";
   set_debug( t1=>True, t2=>False, t3=>4, t4=>'Blue' );
@@ -52,14 +57,34 @@ subtest "debug labels" => {
   is debug('t2'), False,  "Setting debug label to False works";
   is debug('t4'), 'Blue', "Setting debug label to a string works";
   clr_debug('t4');
-  is debug('t4'), False,  "Clearing an debug label sets it to False";
+  nok debug('t4'),  "Clearing a debug label sets it to Nil";
+  ok debug_all('t1','t3'), "logical and for debug labels";
+  ok debug_all('t1','t2','t3'), "logical and, with one label False (but not Nil)";
+  nok debug_all('t1','t4'),     "logical and, with one label missing";
+  ok debug_any('t1','t4'),      "logical any, with one label missing";
+  nok debug_any,                "logical any, with no arguments";
+  ok debug_all,                 "logical all, with no arguments (no Nils)";
   clr_debug('t2');
   ok debug.sort == qw{ test-1 test-2 test-3 test-4 t1 t3 }, "two debug labels removed";
   clr_debug;
   is debug, Empty, "all debug labels cleared";
+  nok debug('t1'), "confirm debug label is cleared";
+  set_debug('all');
+  ok debug('t1'), "any label is set to true if 'all' debug label is set";
+  clr_debug;
 }
 
 lives-ok { say caller.list.join('') }, "caller";
+
+subtest "debug_fn" => {
+  sub caller_test() {
+    debug_fn() ?? "triggering message" !! Nil;
+  }
+
+  nok caller_test, "debug_fn doesn't trigger";
+  set_debug('caller_test');
+  is caller_test, "triggering message", "debug_fn triggers";
+}
 
 subtest "msg tests" => {
   lives-ok { msg("test message") }, "test message";
@@ -259,6 +284,5 @@ subtest "unique_tuples" => {
                            [ [1,2,3], [1,3,2], [2,1,3] ].sort,
 			   "unique_tuples removes duplicates";
 }
-
 
 done-testing;

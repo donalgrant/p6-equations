@@ -32,7 +32,7 @@ my $B=Board.new(Bag.new(qw{1 2 2 3 -}));
 isa-ok($P,'Player');
 isa-ok($B,'Board');
 
-diag $B.display;
+diag $B.display if opt('verbose');
 
 subtest "Choose Goal" => {
 
@@ -62,9 +62,9 @@ subtest "Parameter Verification" => {
 
 
 sub do-move(Board $b, Play $p) {
-  diag $p.display;
+  diag $p.display if opt('verbose');
   given $p.type {
-    when 'Terminal'      { diag "You're calling a bluff" unless defined $p.rpn; return False }
+    when 'Terminal'      { msg "You're calling a bluff" unless defined $p.rpn; return False }
     when 'Bonus'         { $b.move_to_forbidden($p.bonus_cube); proceed }  
     when 'Bonus'|'Move'  { given $p.dest {
                                when 'Forbidden' { $b.move_to_forbidden($p.cube) }
@@ -76,23 +76,24 @@ sub do-move(Board $b, Play $p) {
   return True;
 }
 
+set_opt('quiet');
 my $n_plays=5;
 subtest "Play $n_plays Games" => {
   plan $n_plays * 3;
   for ^$n_plays {
-    diag "Testing Game $_";
+    diag "Testing Game $_" if opt('verbose');
     $P.name="Test Player $_";
     $P.crazy_moves=$_*0.25;
     $P.force_required=1.0-0.1*$_;
     $P.extend_solutions=0.1*$_;
-    diag $P.display;
+    diag $P.display if opt('verbose');
     $B=Board.new(Bag.new($cube_str.comb));
     my $g=$P.choose_goal($B);
     ok( $g.defined, "Choose a goal" );
     ok( $B.move_to_goal($g), "move to goal" );
     inner:
     loop { 
-      diag $B.display(); 
+      diag $B.display if opt('verbose');
       last unless do-move($B,$P.turn($B));
     }
     pass "Game $_ Completed";

@@ -7,32 +7,32 @@ use Algorithm::Combinatorics:from<Perl5> qw<tuples combinations permutations>;
 our %opt;  # global options
 our %debug; # debug keywords
 
-multi sub opt( $key ) is export { %opt{$key}:exists ?? %opt{$key} !! False }
+multi sub opt( $key ) is export { %opt{$key}:exists ?? %opt{$key} !! Nil }
 multi sub opt()       is export { %opt }
 
-multi sub set_opt( *%o  ) is export { %opt{$_}=%o{$_} for %o<>:k }
-multi sub set_opt( $key ) is export { %opt{$key}=True  }
-multi sub set_opt( @key ) is export { set_opt($_) for @key }
+multi sub set_opt( *%o  )  is export { %opt{$_}=%o{$_} for %o<>:k }
+multi sub set_opt( *@key ) is export { %opt{$_}=True for @key }
 
-multi sub clr_opt( $key ) is export { %opt{$key}:delete }
-multi sub clr_opt( @key ) is export { clr_opt($_) for @key }
-multi sub clr_opt()       is export { %opt=() }
+multi sub clr_opt( *@key ) is export { %opt{$_}:delete for @key }
+multi sub clr_opt()        is export { %opt=() }
 
-multi sub debug( $key )   is export { %debug{$key}:exists ?? %debug{$key} !! False }
-multi sub debug( @key )   is export { so all %debug{@key}.grep( *.defined ) }
-multi sub debug()         is export { %debug<>:k }
+multi sub debug( $key )      is export { so %debug<all>:exists or %debug{$key}:exists ?? %debug{$key} !! Nil }
+multi sub debug_all( *@key ) is export { so %debug<all>:exists or so %debug{all @key}.grep( *.defined ) }
+multi sub debug_any( *@key ) is export { so %debug<all>:exists or so %debug{any @key}.grep( *.defined ) }
+multi sub debug()            is export { %debug<>:k }
 
-multi sub set_debug( *%o  ) is export { %debug{$_}=%o{$_} for %o<>:k }
-multi sub set_debug( $key ) is export { %debug{$key}=True }
-multi sub set_debug( @key ) is export { set_debug($_) for @key }
+sub debug_fn                 is export { so %debug{caller[4].subname} }
 
-multi sub clr_debug( $key ) is export { %debug{$key}:delete }
-multi sub clr_debug( @key ) is export { clr_debug($_) for @key }
-multi sub clr_debug()       is export { %debug=() }
+multi sub set_debug( *%o  )  is export { %debug{$_}=%o{$_} for %o<>:k }
+multi sub set_debug( *@key ) is export { %debug{$_}=True for @key }
+
+multi sub clr_debug( *@key ) is export { %debug{$_}:delete for @key }
+multi sub clr_debug()        is export { %debug=() }
 
 sub caller() is export { Backtrace.new.list }
 
-sub msg($txt='[ Undefined text ]', $src?, :$trace) is export { 
+sub msg($txt='[ Undefined text ]', $src?, :$trace) is export {
+  return if opt('quiet');
   my $out=$txt;
   $out ~= "[from $src]" if $src;
   $out ~= caller() if $trace;
@@ -102,10 +102,11 @@ sub ops_slots($n) is export {
 # created consistent with the number of operations in $ops_list
 
 sub num-ops-slot($num_list,$ops_list,$slot) is export {
-  # note "constructing RPN for pn={$num_list.join(',')}; po={$ops_list.join(',')}; slot=$slot";
+  msg "constructing RPN for pn={$num_list.join(',')}; po={$ops_list.join(',')}; slot=$slot" if debug_fn;
   my ($ipn,$ipo)=(0,0);
   my $x=$num_list[$ipn++];
-  for $slot.comb -> $s { #  note "inner block:  s=$s, x=$x, ipn=$ipn, ipo=$ipo, pn={$num_list.join(',')}, po={$ops_list.join(',')}";
+  for $slot.comb -> $s {
+    msg "inner block:  s=$s, x=$x, ipn=$ipn, ipo=$ipo, pn={$num_list.join(',')}, po={$ops_list.join(',')}" if debug_fn;
     $x~=$num_list[$ipn++];
     $x~=$ops_list[$ipo++] for (1..$s);
   }

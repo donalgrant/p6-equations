@@ -43,23 +43,23 @@ class Board_Solver does Solutions {
   }
   
   method calculate_solutions($ncubes,:$max_solutions=50000) {  # ncubes is maximum number of cubes to use
-    note "calculate_solutions for ncubes=$ncubes";
+    msg "calculate_solutions for ncubes=$ncubes" if debug_fn;
     die "Goal must be set before calculating solutions" unless $!B.goal;
     die "Number of cubes in a solution must be odd!" if $ncubes %% 2;
     my Bag $num = num_bag($!B.allowed.Bag);
     my Bag $ops = ops_bag($!B.allowed.Bag);
     my $nops=min($ops.total,$num.total-1,floor($ncubes/2));
     my $nnum=min($nops+1,$num.total,$ncubes-$nops);
-#    note "nops=$nops; nnum=$nnum";
+    msg "nops=$nops; nnum=$nnum" if debug_fn;
     return Nil unless $nops>=1 && $nnum>=2; 
     my @pn=get_tuples $nnum, $num, num_bag($!B.R.Bag);
     my @po=get_tuples $nops, $ops, ops_bag($!B.R.Bag);
     my @ops_slots=ops_slots($nops);
-#    note "pn=[{@pn.map({ $_.join(',') }).join('],[')}]";
-#    note "po=[{@po.map({ $_.join(',') }).join('],[')}]";
-#    note "ops_slots={@ops_slots.join(',')}";
+    msg "pn=[{@pn.map({ $_.join(',') }).join('],[')}]" if debug_fn;
+    msg "po=[{@po.map({ $_.join(',') }).join('],[')}]" if debug_fn;
+    msg "ops_slots={@ops_slots.join(',')}" if debug_fn;
     my $n_solutions= @pn * @po * @ops_slots;    # numeric context -- product of array sizes
-#    note "n_solutions=$n_solutions";
+    msg "n_solutions=$n_solutions" if debug_fn;
     die "issue with get_tuples? pn={@pn}, po={@po}; ops_slots={@ops_slots}" unless $n_solutions>0;
     if ($n_solutions>$max_solutions) {
       my $reduce_factor=min( 4.0, ($n_solutions/$max_solutions)**(1.0/3.0) ); 
@@ -71,11 +71,11 @@ class Board_Solver does Solutions {
       @po       =choose_n $npo, @po;
       @ops_slots=choose_n $nsl, @ops_slots;
       $n_solutions= @pn * @po* @ops_slots;
-      note "after sub-select, n_solutions=$n_solutions";
+      msg "after sub-select, n_solutions=$n_solutions" if debug_fn;
     }
     my $i=0;
-    for @pn -> $pn {  # note "working with pn={$pn.join(',')}";
-      for @po -> $po { # note "working with po={$po.join(',')}";
+    for @pn -> $pn {  
+      for @po -> $po { 
         for @ops_slots -> $slot {  # now construct this RPN
 	  my RPN $rpn .= new(num-ops-slot($pn,$po,$slot));  # could be undefined ('10/', etc)
 	  self.save($rpn) if $rpn.defined and +$rpn==$!B.goal;
