@@ -243,8 +243,8 @@ class Player does Solutions {
       # Set up a Board_Solver to try to find missing cube
       msg "creating a bag from missing={$missing.kxxv}; allowed={$B.allowed.kxxv}; rpn={$rpn.Bag.kxxv}" if debug_fn;
       msg "bag sums are:  missing+allowed={($missing (+) $B.allowed).kxxv}; rpn-missing={($rpn.Bag (-) $missing).kxxv}" if debug_fn;
-      msg "Setting up a Board with cubes {$B.kxxv}, which should include missing cube $cube" if debug_fn;
       my Board_Solver $BS .= new(Board.new(U=>($B.allowed (-) ($rpn.Bag (-) $missing)).BagHash,G=>$cube));
+      msg "Set up a new Board with missing $cube as goal:\n{$BS.B.display}" if debug_fn;
       for 3,5 -> $ncubes {  # no need for 1, otherwise not really a replacement!
 	$BS.calculate_solutions($ncubes);
 	my @rpn_list = gather {
