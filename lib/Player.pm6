@@ -197,9 +197,8 @@ class Player does Solutions {
 	if ($missing.elems > 0) {
 	  msg "{$r.aos} is no longer doable -- needs {$missing.kxxv}" if debug_fn;
 	  for self.find_replacement($B,$missing.BagHash,$r) -> $new_rpn {
-	    my RPN $rpn .=new($new_rpn);
-	    $still_doable.save($rpn) if $BS.doable_solution($rpn);  # make sure -- not sure we need the call to $BS
-	    self.save($rpn);
+	    $still_doable.save($new_rpn) if $BS.doable_solution(RPN.new($new_rpn));  # make sure -- not sure we need the call to $BS
+	    self.save($new_rpn);
 	  }
 	} else { # must be a new required which is not part of the RPN
 	  my $extra_req = $BS.req-not-in( $r );
