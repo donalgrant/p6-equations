@@ -13,54 +13,62 @@ use Player;
 use Play;
 use Cube;      
 
-# $::opt{debug}=scalar(@ARGV);
-
 sub do-move(Board $b, Play $p) {
-  note $p.display;
+  msg $p.display;
   given $p.type {
-    when 'Terminal'      { note "You're calling a bluff" unless defined $p.rpn; return False }
+    when 'Terminal'      { msg "You're calling a bluff" unless defined $p.rpn; return False }
     when 'Bonus'         { $b.move_to_forbidden($p.bonus_cube); proceed }  
-    when 'Bonus'|'Move'  { given $p.dest {
-                               when 'Forbidden' { $b.move_to_forbidden($p.cube) }
-			       when 'Permitted' { $b.move_to_permitted($p.cube) }
-			       when 'Required'  { $b.move_to_required( $p.cube) }
-			     }
+    when 'Bonus'|'Move'  {
+			  given $p.dest {
+			    when 'Forbidden' { $b.move_to_forbidden($p.cube) }
+			    when 'Permitted' { $b.move_to_permitted($p.cube) }
+			    when 'Required'  { $b.move_to_required( $p.cube) }
+			  }
 			 }
   }
   return True;
 }
 
-my @c=[1..12].map({   Red_Cube.new });
-my @d= [1..8].map({  Blue_Cube.new });
-my @e= [1..6].map({ Green_Cube.new });
-my @f= [1..6].map({ Black_Cube.new });
+sub MAIN(
+  :$verbose=False,       #= print extra diagnostic messages (default=False)
+  :$debug,               #= comma separated list of debug labels (or 'all') (default none)
+) {
 
-my Cube_Bag $CB.=new([|@c,|@d,|@e,|@f]);
-$CB.roll;
+  set_opt('verbose') if $verbose;
+  if ($debug) { set_debug($_) for $debug.split(',') }
 
-my Board $B.=new(Bag.new($CB.showing));
+  my @c=[1..12].map({   Red_Cube.new });
+  my @d= [1..8].map({  Blue_Cube.new });
+  my @e= [1..6].map({ Green_Cube.new });
+  my @f= [1..6].map({ Black_Cube.new });
 
-msg $B.display;
+  my Cube_Bag $CB.=new([|@c,|@d,|@e,|@f]);
+  $CB.roll;
 
-my $P1=Player.new(name=>'Computer 1');
-my $P2=Player.new(name=>'Computer 2');
+  my Board $B.=new(Bag.new($CB.showing));
 
-my $g=$P1.choose_goal($B);
+  msg $B.display;
 
-assert { $g.defined }, "Found a goal from {$B.display}";
+  my $P1=Player.new(name=>'Computer 1');
+  my $P2=Player.new(name=>'Computer 2');
 
-$B.move_to_goal($g);
+  my $g=$P1.choose_goal($B);
 
-note "Starting Board:\n{$B.display}";
+  assert { $g.defined }, "Found a goal from {$B.display}";
 
-# Play the game
+  $B.move_to_goal($g);
 
-loop {
+  msg "Starting Board:\n{$B.display}";
 
-  last unless do-move($B,$P1.turn($B));
-  last unless do-move($B,$P2.turn($B));
+  # Play the game
 
+  loop {
+
+    last unless do-move($B,$P1.turn($B));
+    last unless do-move($B,$P2.turn($B));
+
+  }
+
+  msg "Final Board:\n{$B.display}";
 }
-
-note "Final Board:\n{$B.display}";
 

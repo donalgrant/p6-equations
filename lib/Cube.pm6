@@ -1,5 +1,7 @@
 use v6;
 
+use Globals;
+
 class Cube {
 
   has $.faces;    # List of faces -- won't change after initialization

@@ -12,32 +12,44 @@ use-ok 'Play';
 use Play;
 use RPN;
 
-my $B=Play.new(type=>'Move',who=>'The_Author',cube=>'^',dest=>'Required',rpn=>RPN.new('11^11@+'));
-$B.notes="This is a test play";
-isa-ok($B, 'Play', "Fully-specified play:  {$B.display}");
+use-ok 'Globals';
+use Globals;
 
-subtest "methods" => {
-  my @methods=qw<new who type cube bonus_cube dest rpn solutions display>;
-  can-ok( $B, $_ ) for @methods;
+sub MAIN(
+  :$verbose=False,       #= print extra diagnostic messages (default=False)
+  :$debug,               #= comma separated list of debug labels (or 'all') (default none)
+) {
+
+  set_opt('verbose') if $verbose;
+  if ($debug) { set_debug($_) for $debug.split(',') }
+
+  my $B=Play.new(type=>'Move',who=>'The_Author',cube=>'^',dest=>'Required',rpn=>RPN.new('11^11@+'));
+  $B.notes="This is a test play";
+  isa-ok($B, 'Play', "Fully-specified play:  {$B.display}");
+  
+  subtest "methods" => {
+    my @methods=qw<new who type cube bonus_cube dest rpn solutions display>;
+    can-ok( $B, $_ ) for @methods;
+  }
+  
+  subtest "construction" => {
+    isa-ok($B=Play.new(type=>'Move',cube=>'7',dest=>'Forbidden'),  'Play', "Valid Regular move to Forbidden:  {$B.display}");
+    isa-ok($B=Play.new(type=>'Move',cube=>'*',dest=>'Required'),   'Play', "Valid Regular move to Required:   {$B.display}");
+    isa-ok($B=Play.new(type=>'Move',cube=>'0',dest=>'Permitted'),  'Play', "Valid Regular move to Permitted:  {$B.display}");
+  
+    isa-ok($B=Play.new(type=>'Bonus',cube=>'0',bonus_cube=>'*',dest=>'Permitted'),  'Play', "Valid Bonus move to Permitted:  {$B.display}");
+    isa-ok($B=Play.new(type=>'Terminal'),                                           'Play', "Valid Terminal move:  {$B.display}");
+  }
+  
+  subtest "invalid construction" => {
+    dies-ok( { Play.new(type=>'Reg')                                     }, "die on invalid type");
+    dies-ok( { Play.new(type=>'Move',dest=>'Permitted')                  }, "Regular move die on missing cube");
+    dies-ok( { Play.new(type=>'Move',dest=>'Permited')                   }, "Regular move die on dest typo");
+    dies-ok( { Play.new(type=>'Move',cube=>'6')                          }, "Regular move die on missing dest");
+    dies-ok( { Play.new(type=>'Bonus',bonus_cube=>'/',cube=>'6')         }, "Bonus move die on missing dest");
+    dies-ok( { Play.new(type=>'Bonus',bonus_cube=>'/',dest=>'Permitted') }, "Bonus move die on missing cube");
+    dies-ok( { Play.new(type=>'Bonus',dest=>'Permitted',cube=>'6')       }, "Bonus move die on missing bonus_cube");
+  }
+  
+  done-testing;
 }
-
-subtest "construction" => {
-  isa-ok($B=Play.new(type=>'Move',cube=>'7',dest=>'Forbidden'),  'Play', "Valid Regular move to Forbidden:  {$B.display}");
-  isa-ok($B=Play.new(type=>'Move',cube=>'*',dest=>'Required'),   'Play', "Valid Regular move to Required:   {$B.display}");
-  isa-ok($B=Play.new(type=>'Move',cube=>'0',dest=>'Permitted'),  'Play', "Valid Regular move to Permitted:  {$B.display}");
-
-  isa-ok($B=Play.new(type=>'Bonus',cube=>'0',bonus_cube=>'*',dest=>'Permitted'),  'Play', "Valid Bonus move to Permitted:  {$B.display}");
-  isa-ok($B=Play.new(type=>'Terminal'),                                           'Play', "Valid Terminal move:  {$B.display}");
-}
-
-subtest "invalid construction" => {
-  dies-ok( { Play.new(type=>'Reg')                                     }, "die on invalid type");
-  dies-ok( { Play.new(type=>'Move',dest=>'Permitted')                  }, "Regular move die on missing cube");
-  dies-ok( { Play.new(type=>'Move',dest=>'Permited')                   }, "Regular move die on dest typo");
-  dies-ok( { Play.new(type=>'Move',cube=>'6')                          }, "Regular move die on missing dest");
-  dies-ok( { Play.new(type=>'Bonus',bonus_cube=>'/',cube=>'6')         }, "Bonus move die on missing dest");
-  dies-ok( { Play.new(type=>'Bonus',bonus_cube=>'/',dest=>'Permitted') }, "Bonus move die on missing cube");
-  dies-ok( { Play.new(type=>'Bonus',dest=>'Permitted',cube=>'6')       }, "Bonus move die on missing bonus_cube");
-}
-
-done-testing;
