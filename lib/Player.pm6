@@ -162,24 +162,24 @@ class Player does Solutions {
     }
     
     my Board_Solver $BS .= new($B);
-    my Numeric %still_doable{Str};
-    my Numeric %not_doable{Str};
+    my $still_doable = Solutions.new;
+    my $not_doable   = Solutions.new;
 
-    for self.rpn_list -> $rpn { $BS.doable_solution($rpn) ?? ( %still_doable{~$rpn} = +$rpn ) !! ( %not_doable{~$rpn} = +$rpn ) }
+    for self.rpn_list -> $rpn { $BS.doable_solution($rpn) ?? $still_doable.save($rpn) !! $not_doable.save($rpn) }
 
-    if (%still_doable.elems > 0) {
+    if ($still_doable.found) {
       # could possibly extend doable solutions here via add / replace
       # choose a move based on the current list of valid solutions.
       # only worth doing if we then rule out the original solution
       # by requiring something from the new one
-      for %still_doable.keys -> $r {
+      for $still_doable.list -> $r {
 	if (chance($!extend_solutions)) {  # make a parameter
 	  msg "Replacing $r; Board is \n {$B.display}" if debug_fn;
 	  for $r.comb -> $cube {
 	    for self.find_replacement($B,BagHash.new($cube),RPN.new($r)) -> $new_rpn {
 	      msg "replacement for ($r) is ($new_rpn)" if debug_fn;
 	      my RPN $rep_rpn .=new($new_rpn);
-	      %still_doable{$new_rpn} = +$rep_rpn if $BS.doable_solution($rep_rpn);  # make sure -- not sure we need the call to $BS
+	      $still_doable.save($rep_rpn) if $BS.doable_solution($rep_rpn);  # make sure -- not sure we need the call to $BS
 	      self.save($rep_rpn);
 	      if (BagHash.new($cube) (<=) $B.U) {
 		return Play.new(who=>$!name,type=>'Move',dest=>'Forbidden',cube=>$cube,rpn=>$rep_rpn,
@@ -192,18 +192,18 @@ class Player does Solutions {
       }
     } else {
       # can we make some solutions doable by extend / replace, or both?
-      for %not_doable.keys -> $r {
-	my $missing = $BS.cubes-missing_for( RPN.new($r) );
+      for $not_doable.rpn_list -> $r {
+	my $missing = $BS.cubes-missing_for( $r );
 	if ($missing.elems > 0) {
-	  msg "{RPN.new($r).aos} is no longer doable -- needs {$missing.kxxv}" if debug_fn;
-	  for self.find_replacement($B,$missing.BagHash,RPN.new($r)) -> $new_rpn {
+	  msg "{$r.aos} is no longer doable -- needs {$missing.kxxv}" if debug_fn;
+	  for self.find_replacement($B,$missing.BagHash,$r) -> $new_rpn {
 	    my RPN $rpn .=new($new_rpn);
-	    %still_doable{$new_rpn} = +$rpn if $BS.doable_solution($rpn);  # make sure -- not sure we need the call to $BS
+	    $still_doable.save($rpn) if $BS.doable_solution($rpn);  # make sure -- not sure we need the call to $BS
 	    self.save($rpn);
 	  }
 	} else { # must be a new required which is not part of the RPN
-	  my $extra_req = $BS.req-not-in( RPN.new($r) );
-	  msg "{RPN.new($r).aos} is no longer doable -- does not have required {$extra_req.kxxv}" if debug_fn;
+	  my $extra_req = $BS.req-not-in( $r );
+	  msg "{$r.aos} is no longer doable -- does not have required {$extra_req.kxxv}" if debug_fn;
 	  # only do this (for now?) for a single extra required element
 	  
 	  # can we extend the formula to include the new number using
@@ -221,8 +221,8 @@ class Player does Solutions {
 	  
 	}
       }
-      msg $B.display if %not_doable.elems > 0;
-      self.generate_solutions($B) unless %still_doable.elems > 0;
+      msg $B.display if $not_doable.found;
+      self.generate_solutions($B) unless $still_doable.found;
     }
 
     self.filter_solutions($B); 
