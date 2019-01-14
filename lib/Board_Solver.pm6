@@ -46,6 +46,7 @@ class Board_Solver does Solutions {
     msg "calculate_solutions for ncubes=$ncubes" if debug_fn;
     die "Goal must be set before calculating solutions" unless $!B.goal;
     die "Number of cubes in a solution must be odd!" if $ncubes %% 2;
+    return self unless $!B.equation_feasible;
     my Bag $num = num_bag($!B.allowed.Bag);
     my Bag $ops = ops_bag($!B.allowed.Bag);
     my $nops=min($ops.total,$num.total-1,floor($ncubes/2));

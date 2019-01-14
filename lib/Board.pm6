@@ -70,11 +70,22 @@ class Board {
   method install_goal($goal) { $!G=$goal; self }
 
   method !req_tuples(@c,&r) {
-    my $bag=$!R.list.grep(&r).Bag;
+    my $bag=self.required.grep(&r).Bag;      # should this be $!R.list... or self.required...?
     @c.grep( Bag.new(*) (>=) $bag );
   }
   method req_num_tuples(@c) { self!req_tuples(@c,&digit) }
   method req_ops_tuples(@c) { self!req_tuples(@c,&op)    }
+
+  method !cube_count(BagHash $B, &r) { $B.kxxv.grep(&r).elems }
+  method !req_cube_count(&r) { self!cube_count($!R,&r) }
+  method !all_cube_count(&r) { self!cube_count(self.allowed,&r) }
+  
+  method n_req_ops { self!req_cube_count(&op) }
+  method n_req_num { self!req_cube_count(&digit) }
+  method n_all_ops { self!all_cube_count(&op) }
+  method n_all_num { self!all_cube_count(&digit) }
+
+  method equation_feasible { (self.n_req_ops < self.n_all_num) and (self.n_req_num <= self.n_all_ops + 1) }
 
   method goal_options( $max_digits=3 ) {                               
     my $digit_bag=self.available.grep(/<digit>/).Bag;                  

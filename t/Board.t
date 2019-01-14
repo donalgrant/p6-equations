@@ -100,7 +100,17 @@ sub MAIN(
     $B.move_to_goal("20");
     is( $B.goal, 20, "Goal is set for this board" );
   }
-  
+
+  subtest "Feasibility and Cube Counts" => {
+    $B=Board.new(U=>BagHash.new(qw{ 1 2 + + + }), R=>BagHash.new(qw{ 6 - - }));
+    is $B.n_req_ops, 2, "Number of Required ops";
+    is $B.n_req_num, 1, "Number of Required digits";
+    is $B.n_all_ops, 5, "Number of Allowed ops";
+    is $B.n_all_num, 3, "Number of Allowed digits";
+    ok $B.equation_feasible, "Required ops one less than available digits";
+    $B.move_to_required('+');
+    nok $B.equation_feasible, "Required ops equal to available digits is unfeasible equation";
+  }
   done-testing;
 
 }

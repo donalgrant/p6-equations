@@ -156,7 +156,7 @@ class Player does Solutions {
 
     self.generate_solutions($B) unless (self.found);
     
-    unless (self.found) {
+    unless ($B.equation_feasible and self.found) {
       msg "***I challenge -- I see no solution";
       return Play.new(who=>$!name,type=>'Terminal');
     }
