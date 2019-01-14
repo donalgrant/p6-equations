@@ -36,7 +36,7 @@ sub msg($txt='[ Undefined text ]', $src?, :$trace) is export {
   my $out=$txt;
   $out ~= "[from $src]" if $src;
   $out ~= caller() if $trace;
-  put($out); 
+  note $out; 
 }  
 
 sub quit($txt='[ Undefined text ]') is export { msg($txt, :trace); die() }
