@@ -31,7 +31,7 @@ sub MAIN(
   if ($debug) { set_debug($_) for $debug.split(',') }
 
   subtest "Methods" => {
-    my @methods=qw< new choose_goal manual >;  
+    my @methods=qw< new choose_goal manual reset >;  
     can-ok( Player.new, $_ ) for @methods;
   }
 
@@ -61,9 +61,17 @@ sub MAIN(
 
   subtest "Parameter Verification" => {
 
+    my $P=Player.new(force_required=>1.0,name=>'Parm-Ver-Test');
+    is $P.force_required,  1.0, "Can initialize force_required in constructor";
+    is $P.permitted_crazy, 0.5, "But other parameters get default";
+    
     $P.permitted_crazy=0.6;   # without changing the other types, this should break
+    is $P.permitted_crazy, 0.6, "Able to set permitted_crazy";
     dies-ok { $P.crazy_move(Board.new(Bag.new($cube_str.comb))) }, "crazy_move fails with inconsistent parameters";
-    $P.permitted_crazy=0.5;   # reset
+    
+    isa-ok($P.reset, 'Player', "Force reset to defaults");
+    is $P.name, 'Parm-Ver-Test', "Name preserved through reset";
+    is $P.permitted_crazy, 0.5, "Back to default value of permitted_crazy";
 
   }
 

@@ -18,15 +18,21 @@ class Player does Solutions {
   has $.extend_solutions  is rw;
   has $.force_required    is rw;
 
-  submethod TWEAK { self.default_parms }
+  submethod TWEAK { self!init_parms }
+
+  method reset {
+    $_=Nil for $.crazy_moves,$.permitted_crazy,$.required_crazy,$.forbidden_crazy,
+               $.extend_solutions,$.force_required;
+    self!init_parms;
+  }
   
-  method default_parms {
-    $!crazy_moves=0.05;
-    $!permitted_crazy=0.50;
-    $!required_crazy=0.25;
-    $!forbidden_crazy=0.25;
-    $!extend_solutions=0.10;
-    $!force_required=0.75;
+  method !init_parms {
+    $!crazy_moves//=0.05;
+    $!permitted_crazy//=0.50;
+    $!required_crazy//=0.25;
+    $!forbidden_crazy//=0.25;
+    $!extend_solutions//=0.10;
+    $!force_required//=0.75;
     return self;
   }
   
@@ -204,20 +210,33 @@ class Player does Solutions {
 	  my $extra_req = $BS.req-not-in( $r );
 	  msg "{$r.aos} is no longer doable -- does not have required {$extra_req.kxxv}" if debug;
 	  # only do this (for now?) for a single extra required element
-	  
-	  # can we extend the formula to include the new number using
-	  #   an identity relation?  If R is the original formula, and 
-	  #   w is the new number:
-	  #     R+(w-F) R-(w-F) where F is 1,3,5 cubes which evaluate to w (needs +,- or -,-)
-	  #     R/(w/F) R*(w/F) where F is 1,3,5 cubes which evaluate to w (needs /,* or /,/)
-	  #     (w/F)@R R^(w/F) where F is 1,3,5 cubes which evaluate to w (needs /,@ or ^,/)
-	  
-	  # can we extend the formula to include a new operator using
-	  #   an identity relation?  If R is the original formula, and
-	  #   o is the new operator:
-	  #     RoF      where F is 1,3,5 cubes which evaluate to 0 for o = +,-
-	  #     RoF, FoR where F is 1,3,5 cubes which evaluate to 1 for o = *,/,^,@
-	  
+
+	  if ($extra_req.total==1) {  # single cube newly required
+	    my $cube=$extra_req.pick;  msg "single cube newly required";
+	    my $excess=$r.excess($BS.B.allowed);   # cubes we can use to extend the equation
+	    given $cube {
+	      when /1/ and ($excess{any qw{ / * ^ @ }} > 0) { msg "can use one of {$excess.kxxv.join('')} to include 1" }
+	      when /0/ and ($excess{any qw{ + - }} > 0)     { msg "can use one of {$excess.kxxv.join('')} to include 0" }
+	      when /<[/*^@]>/ { msg "got operator $_; calculate goal of 1 with Board from {$excess.kxxv.join('')}" }
+	      when / <[+-]> / { msg "got operator $_; calculate goal of 0 with Board from {$excess.kxxv.join('')}" }
+	      default { # other single character options
+		msg "cube is $cube, while excess={$excess.kxxv.join('')}";
+	      }
+	    }
+
+	    # can we extend the formula to include the new number using
+	    #   an identity relation?  If R is the original formula, and 
+	    #   w is the new number:
+	    #     R+(w-F) R-(w-F) where F is 1,3,5 cubes which evaluate to w (needs +,- or -,-)
+	    #     R/(w/F) R*(w/F) where F is 1,3,5 cubes which evaluate to w (needs /,* or /,/)
+	    #     (w/F)@R R^(w/F) where F is 1,3,5 cubes which evaluate to w (needs /,@ or ^,/)
+	    
+	    # can we extend the formula to include a new operator using
+	    #   an identity relation?  If R is the original formula, and
+	    #   o is the new operator:
+	    #     RoF      where F is 1,3,5 cubes which evaluate to 0 for o = +,-
+	    #     RoF, FoR where F is 1,3,5 cubes which evaluate to 1 for o = *,/,^,@
+	  } 
 	}
       }
       msg $B.display if $not_doable.found;
@@ -318,8 +337,8 @@ class Player does Solutions {
     my %play=(who=>$!name,type=>'Move',cube=>$B.unused.roll,notes=>'crazy move');
     given rand {
       when 0.0 <= $_ < $pc { return Play.new(dest=>'Permitted',|%play) }
-      when $pc <= $_ < $pr { return Play.new(dest=>'Forbidden',|%play) }
-      when $pr <= $_ < $pf { return Play.new(dest=>'Required', |%play) }
+      when $pc <= $_ < $pr { return Play.new(dest=>'Required', |%play) }
+      when $pr <= $_ < $pf { return Play.new(dest=>'Forbidden',|%play) }
     }
   }
 

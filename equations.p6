@@ -50,7 +50,8 @@ sub MAIN(
   msg $B.display;
 
   my $P1=Player.new(name=>'Computer 1');
-  my $P2=Player.new(name=>'Computer 2');
+  my $P2=Player.new(name=>'Computer 2',
+		    crazy_moves=>1.0, required_crazy=>1.0, forbidden_crazy=>0.0, permitted_crazy=>0.0);
 
   my $g=$P1.choose_goal($B);
 
