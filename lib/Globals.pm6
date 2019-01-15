@@ -102,11 +102,11 @@ sub ops_slots($n) is export {
 # created consistent with the number of operations in $ops_list
 
 sub num-ops-slot($num_list,$ops_list,$slot) is export {
-  msg "constructing RPN for pn={$num_list.join(',')}; po={$ops_list.join(',')}; slot=$slot" if debug('RPN-build');
+#  msg "constructing RPN for pn={$num_list.join(',')}; po={$ops_list.join(',')}; slot=$slot" if debug('RPN-build');
   my ($ipn,$ipo)=(0,0);
   my $x=$num_list[$ipn++];
   for $slot.comb -> $s {
-    msg "inner block:  s=$s, x=$x, ipn=$ipn, ipo=$ipo, pn={$num_list.join(',')}, po={$ops_list.join(',')}" if debug('RPN-build');
+#    msg "inner block:  s=$s, x=$x, ipn=$ipn, ipo=$ipo, pn={$num_list.join(',')}, po={$ops_list.join(',')}" if debug('RPN-build');
     $x~=$num_list[$ipn++];
     $x~=$ops_list[$ipo++] for (1..$s);
   }

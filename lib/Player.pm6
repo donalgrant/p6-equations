@@ -212,13 +212,36 @@ class Player does Solutions {
 	  # only do this (for now?) for a single extra required element
 
 	  if ($extra_req.total==1) {  # single cube newly required
-	    my $cube=$extra_req.pick;  msg "single cube newly required";
-	    my $excess=$r.excess($BS.B.allowed);   # cubes we can use to extend the equation
+	    my $cube=$extra_req.pick;  msg "single cube $cube newly required";
+	    my $excess=$r.excess($BS.B.allowed).BagHash;   # cubes we can use to extend the equation; includes $cube
+	    my $m_ops-excess=qw{ / * ^ @ }.grep(* (elem) $excess);
+	    my $a_ops-excess=qw{ + - }.grep(* (elem) $excess);
 	    given $cube {
-	      when /1/ and ($excess{any qw{ / * ^ @ }} > 0) { msg "can use one of {$excess.kxxv.join('')} to include 1" }
-	      when /0/ and ($excess{any qw{ + - }} > 0)     { msg "can use one of {$excess.kxxv.join('')} to include 0" }
-	      when /<[/*^@]>/ { msg "got operator $_; calculate goal of 1 with Board from {$excess.kxxv.join('')}" }
-	      when / <[+-]> / { msg "got operator $_; calculate goal of 0 with Board from {$excess.kxxv.join('')}" }
+	      when /1/ and so $m_ops-excess {
+		my $op=$m_ops-excess.pick;
+		my $nr=( $op eq '@' ) ??  "$_$r$op" !! "$r$_$op";
+		self.save($nr);
+		msg "saving $nr";
+		$still_doable.save($nr);
+	      }
+	      when /0/ and so $a_ops-excess {
+		my $op=$a_ops-excess.pick;
+		my $nr="$r$_$op";
+		self.save($nr);
+		msg "saving $nr";
+		$still_doable.save($nr);
+	      }
+	      when /<[/*^@]>/ {
+		msg "got operator $_; calculate goal of 1 with Board from {$excess.kxxv.join('')}";
+		my Board $BO .= new(G=>'1', U=>$excess);
+		$BO.move_to_forbidden($_);  # not available for Board solution -- will put in RPN though
+		msg "To add $_, Try to solve:\n{$BO.display}";
+	      }
+	      when / <[+-]> / {
+		my Board $BO .= new(G=>'0', U=>$excess);
+		$BO.move_to_forbidden($_); # not available for Board solution -- will put in RPN though
+		msg "To add $_, Try to solve:\n{$BO.display}";
+	      }
 	      default { # other single character options
 		msg "cube is $cube, while excess={$excess.kxxv.join('')}";
 	      }
