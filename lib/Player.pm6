@@ -200,66 +200,24 @@ class Player does Solutions {
       # can we make some solutions doable by extend / replace, or both?
       for $not_doable.rpn_list -> $r {
 	my $missing = $BS.cubes-missing_for( $r );
-	if ($missing.elems > 0) {
+	if ($missing.elems > 0) {       # some cube(s) in the RPN will never be available
 	  msg "{$r.aos} is no longer doable -- needs {$missing.kxxv}" if debug;
 	  for self.find_replacement($B,$missing.BagHash,$r) -> $new_rpn {
-	    $still_doable.save($new_rpn) if $BS.doable_solution(RPN.new($new_rpn));  # make sure -- not sure we need the call to $BS
+	    $still_doable.save($new_rpn);
+	    once { $not_doable.delete($r) }
 	    self.save($new_rpn);
+	    note "found replacement:  $r --> $new_rpn";
 	  }
-	} else { # must be a new required which is not part of the RPN
+	} else {                        # must be a new required which is not part of the RPN
 	  my $extra_req = $BS.req-not-in( $r );
 	  msg "{$r.aos} is no longer doable -- does not have required {$extra_req.kxxv}" if debug;
 	  # only do this (for now?) for a single extra required element
-
-	  if ($extra_req.total==1) {  # single cube newly required
-	    my $cube=$extra_req.pick;  msg "single cube $cube newly required";
-	    my $excess=$r.excess($BS.B.allowed).BagHash;   # cubes we can use to extend the equation; includes $cube
-	    my $m_ops-excess=qw{ / * ^ @ }.grep(* (elem) $excess);
-	    my $a_ops-excess=qw{ + - }.grep(* (elem) $excess);
-	    given $cube {
-	      when /1/ and so $m_ops-excess {
-		my $op=$m_ops-excess.pick;
-		my $nr=( $op eq '@' ) ??  "$_$r$op" !! "$r$_$op";
-		self.save($nr);
-		msg "saving $nr";
-		$still_doable.save($nr);
-	      }
-	      when /0/ and so $a_ops-excess {
-		my $op=$a_ops-excess.pick;
-		my $nr="$r$_$op";
-		self.save($nr);
-		msg "saving $nr";
-		$still_doable.save($nr);
-	      }
-	      when /<[/*^@]>/ {
-		msg "got operator $_; calculate goal of 1 with Board from {$excess.kxxv.join('')}";
-		my Board $BO .= new(G=>'1', U=>$excess);
-		$BO.move_to_forbidden($_);  # not available for Board solution -- will put in RPN though
-		msg "To add $_, Try to solve:\n{$BO.display}";
-	      }
-	      when / <[+-]> / {
-		my Board $BO .= new(G=>'0', U=>$excess);
-		$BO.move_to_forbidden($_); # not available for Board solution -- will put in RPN though
-		msg "To add $_, Try to solve:\n{$BO.display}";
-	      }
-	      default { # other single character options
-		msg "cube is $cube, while excess={$excess.kxxv.join('')}";
-	      }
-	    }
-
-	    # can we extend the formula to include the new number using
-	    #   an identity relation?  If R is the original formula, and 
-	    #   w is the new number:
-	    #     R+(w-F) R-(w-F) where F is 1,3,5 cubes which evaluate to w (needs +,- or -,-)
-	    #     R/(w/F) R*(w/F) where F is 1,3,5 cubes which evaluate to w (needs /,* or /,/)
-	    #     (w/F)@R R^(w/F) where F is 1,3,5 cubes which evaluate to w (needs /,@ or ^,/)
-	    
-	    # can we extend the formula to include a new operator using
-	    #   an identity relation?  If R is the original formula, and
-	    #   o is the new operator:
-	    #     RoF      where F is 1,3,5 cubes which evaluate to 0 for o = +,-
-	    #     RoF, FoR where F is 1,3,5 cubes which evaluate to 1 for o = *,/,^,@
-	  } 
+	  for self.find_expansion($B,$extra_req.BagHash,$r.excess($BS.B.allowed.Bag).BagHash,$r) -> $new_rpn {
+	    $still_doable.save($new_rpn);
+	    once { $not_doable.delete($r) }
+	    self.save($new_rpn);
+	    note "found expansion:  $r --> $new_rpn";
+	  }
 	}
       }
       msg $B.display if $not_doable.found;
@@ -313,6 +271,48 @@ class Player does Solutions {
     return [];
   }
 
+  # can we extend the formula to include the new number using
+  #   an identity relation?  If R is the original formula, and 
+  #   w is the new number:
+  #     R+(w-F) R-(w-F) where F is 1,3,5 cubes which evaluate to w (needs +,- or -,-)
+  #     R/(w/F) R*(w/F) where F is 1,3,5 cubes which evaluate to w (needs /,* or /,/)
+  #     (w/F)@R R^(w/F) where F is 1,3,5 cubes which evaluate to w (needs /,@ or ^,/)
+  
+  # can we extend the formula to include a new operator using
+  #   an identity relation?  If R is the original formula, and
+  #   o is the new operator:
+  #     RoF      where F is 1,3,5 cubes which evaluate to 0 for o = +,-
+  #     RoF, FoR where F is 1,3,5 cubes which evaluate to 1 for o = *,/,^,@
+  
+  method find_expansion(Board $B, BagHash $req, BagHash $excess, RPN $rpn) {
+    return [] unless $req.total==1;  # only handling single newly req cube (for now)
+    my $cube=$req.pick;
+    msg "single cube $cube newly required" if debug;
+    my $m_ops-excess=qw{ / * ^ @ }.grep(* (elem) $excess);
+    my $a_ops-excess=qw{ + - }.grep(* (elem) $excess);
+    return gather {
+      given $cube {
+	when /1/ and so $m_ops-excess { take ( $_ eq '@' ) ?? "$cube$rpn$_" !! "$rpn$cube$_" with $m_ops-excess.pick }
+	when /0/ and so $a_ops-excess { take "$rpn$cube"~$a_ops-excess.pick }
+	when /<[/*^@]>/ {
+	  msg "got operator $_; calculate goal of 1 with Board from {$excess.kxxv.join('')}" if debug;
+	  my Board $BO .= new(G=>'1', U=>$excess);
+	  $BO.move_to_forbidden($_);  # not available for Board solution -- will put in RPN though
+	  msg "To add $_, Try to solve:\n{$BO.display}" if debug;
+	}
+	when / <[+-]> / {
+	  my Board $BO .= new(G=>'0', U=>$excess);
+	  $BO.move_to_forbidden($_); # not available for Board solution -- will put in RPN though
+	  msg "To add $_, Try to solve:\n{$BO.display}" if debug;
+	}
+	default { # other single character options
+	  msg "cube is $cube, while excess={$excess.kxxv.join('')}" if debug;
+	}
+      }
+    }
+  }
+
+  
   # for choose_move, we are guaranteed to only have valid, doable solutions in our current solution_list
   method choose_move(Board $B) {
     

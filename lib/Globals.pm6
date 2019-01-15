@@ -32,7 +32,7 @@ multi sub clr_debug()        is export { %debug=() }
 sub caller() is export { Backtrace.new.list }
 
 sub msg($txt='[ Undefined text ]', $src?, :$trace) is export {
-  return if opt('quiet') and not so debug_list;
+#  return if opt('quiet') and not so debug_list;
   my $out=$txt;
   $out ~= "[from $src]" if $src;
   $out ~= caller() if $trace;
