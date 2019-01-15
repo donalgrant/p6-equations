@@ -45,7 +45,7 @@ sub MAIN(
   }
   
   subtest "debug labels" => {
-    is debug, Empty,  "Start with empty debug list";
+    is debug_list, Empty,  "Start with empty debug list";
     nok debug('test-1'), "debug label test-1 not yet set is Nil";
     nok debug('test-1'), "...even after the second check";
     set_debug('test-1');
@@ -58,7 +58,7 @@ sub MAIN(
     set_debug('test-3');
     is debug('test-3'), True, "setting 'test-3' again doesn't change it";
     set_debug( t1=>True, t2=>False, t3=>4, t4=>'Blue' );
-    ok debug.sort == qw{ test-1 test-2 test-3 test-4 t1 t2 t3 t4 }.sort, "debug labels set so far";
+    ok debug_list.sort == qw{ test-1 test-2 test-3 test-4 t1 t2 t3 t4 }.sort, "debug labels set so far";
     is debug('t2'), False,  "Setting debug label to False works";
     is debug('t4'), 'Blue', "Setting debug label to a string works";
     clr_debug('t4');
@@ -70,30 +70,36 @@ sub MAIN(
     nok debug_any,                "logical any, with no arguments";
     ok debug_all,                 "logical all, with no arguments (no Nils)";
     clr_debug('t2');
-    ok debug.sort == qw{ test-1 test-2 test-3 test-4 t1 t3 }, "two debug labels removed";
+    ok debug_list.sort == qw{ test-1 test-2 test-3 test-4 t1 t3 }, "two debug labels removed";
     clr_debug;
-    is debug, Empty, "all debug labels cleared";
+    is debug_list, Empty, "all debug labels cleared";
     nok debug('t1'), "confirm debug label is cleared";
     set_debug('all');
     ok debug('t1'), "any label is set to true if 'all' debug label is set";
     clr_debug;
   }
-  
-  # Can only do this after all the debug and opt tests
-  set_opt('verbose') if $verbose;
-  if ($debug) { set_debug($_) for $debug.split(',') }
     
   lives-ok { say caller.list.join('') }, "caller";
   
   subtest "debug_fn" => {
     sub caller_test() {
-      debug_fn() ?? "triggering message" !! Nil;
+      debug('keyword') ?? "triggering message" !! Nil;
     }
   
-    nok caller_test, "debug_fn doesn't trigger";
+    nok caller_test, "debug doesn't trigger on fn name";
     set_debug('caller_test');
-    is caller_test, "triggering message", "debug_fn triggers";
+    is caller_test, "triggering message", "debug triggers on fn name";
+    clr_debug;
+    set_debug('keyword');
+    is caller_test, "triggering message", "debug triggers on keyword";
+    set_debug('caller_test');
+    set_debug( keyword=>False ); 
+    nok caller_test, "debug doesn't trigger on fn name if keyword is False";
   }
+  
+  # Can only do this after all the debug and opt tests
+  set_opt('verbose') if $verbose;
+  if ($debug) { set_debug($_) for $debug.split(',') }
   
   subtest "msg tests" => {
     lives-ok { msg("test message") }, "test message";

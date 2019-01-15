@@ -16,12 +16,12 @@ multi sub set_opt( *@key ) is export { %opt{$_}=True for @key }
 multi sub clr_opt( *@key ) is export { %opt{$_}:delete for @key }
 multi sub clr_opt()        is export { %opt=() }
 
-multi sub debug( $key )      is export { so %debug<all>:exists or %debug{$key}:exists ?? %debug{$key} !! Nil }
+multi sub debug()            is export { so %debug{caller[4].subname} or %debug<all> }
+multi sub debug( $key )      is export { %debug{$key}:exists ?? %debug{$key} !! ( so %debug{caller[4].subname} or so %debug<all> )  }
 multi sub debug_all( *@key ) is export { so %debug<all>:exists or so %debug{all @key}.grep( *.defined ) }
 multi sub debug_any( *@key ) is export { so %debug<all>:exists or so %debug{any @key}.grep( *.defined ) }
-multi sub debug()            is export { %debug<>:k }
+multi sub debug_list()       is export { %debug<>:k }
 
-sub debug_fn                 is export { so %debug{caller[4].subname} }
 
 multi sub set_debug( *%o  )  is export { %debug{$_}=%o{$_} for %o<>:k }
 multi sub set_debug( *@key ) is export { %debug{$_}=True for @key }
@@ -102,11 +102,11 @@ sub ops_slots($n) is export {
 # created consistent with the number of operations in $ops_list
 
 sub num-ops-slot($num_list,$ops_list,$slot) is export {
-  msg "constructing RPN for pn={$num_list.join(',')}; po={$ops_list.join(',')}; slot=$slot" if debug_fn;
+  msg "constructing RPN for pn={$num_list.join(',')}; po={$ops_list.join(',')}; slot=$slot" if debug;
   my ($ipn,$ipo)=(0,0);
   my $x=$num_list[$ipn++];
   for $slot.comb -> $s {
-    msg "inner block:  s=$s, x=$x, ipn=$ipn, ipo=$ipo, pn={$num_list.join(',')}, po={$ops_list.join(',')}" if debug_fn;
+    msg "inner block:  s=$s, x=$x, ipn=$ipn, ipo=$ipo, pn={$num_list.join(',')}, po={$ops_list.join(',')}" if debug;
     $x~=$num_list[$ipn++];
     $x~=$ops_list[$ipo++] for (1..$s);
   }
