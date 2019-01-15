@@ -43,7 +43,7 @@ class Board_Solver does Solutions {
   }
   
   method calculate_solutions($ncubes,:$max_solutions=50000) {  # ncubes is maximum number of cubes to use
-    msg "calculate_solutions for ncubes=$ncubes" if debug_fn;
+    msg "calculate_solutions for ncubes=$ncubes" if debug;
     die "Goal must be set before calculating solutions" unless $!B.goal;
     die "Number of cubes in a solution must be odd!" if $ncubes %% 2;
     return self unless $!B.equation_feasible;
@@ -51,16 +51,16 @@ class Board_Solver does Solutions {
     my Bag $ops = ops_bag($!B.allowed.Bag);
     my $nops=min($ops.total,$num.total-1,floor($ncubes/2));
     my $nnum=min($nops+1,$num.total,$ncubes-$nops);
-    msg "nops=$nops; nnum=$nnum" if debug_fn;
+    msg "nops=$nops; nnum=$nnum" if debug;
     return Nil unless $nops>=1 && $nnum>=2; 
     my @pn=get_tuples $nnum, $num, num_bag($!B.R.Bag);
     my @po=get_tuples $nops, $ops, ops_bag($!B.R.Bag);
     my @ops_slots=ops_slots($nops);
-    msg "pn=[{@pn.map({ $_.join(',') }).join('],[')}]" if debug_fn;
-    msg "po=[{@po.map({ $_.join(',') }).join('],[')}]" if debug_fn;
-    msg "ops_slots={@ops_slots.join(',')}" if debug_fn;
+    msg "pn=[{@pn.map({ $_.join(',') }).join('],[')}]" if debug;
+    msg "po=[{@po.map({ $_.join(',') }).join('],[')}]" if debug;
+    msg "ops_slots={@ops_slots.join(',')}" if debug;
     my $n_solutions= @pn * @po * @ops_slots;    # numeric context -- product of array sizes
-    msg "n_solutions=$n_solutions" if debug_fn;
+    msg "n_solutions=$n_solutions" if debug;
     die "issue with get_tuples? pn={@pn}, po={@po}; ops_slots={@ops_slots}" unless $n_solutions>0;
     if ($n_solutions>$max_solutions) {
       my $reduce_factor=min( 4.0, ($n_solutions/$max_solutions)**(1.0/3.0) ); 
@@ -72,7 +72,7 @@ class Board_Solver does Solutions {
       @po       =choose_n $npo, @po;
       @ops_slots=choose_n $nsl, @ops_slots;
       $n_solutions= @pn * @po* @ops_slots;
-      msg "after sub-select, n_solutions=$n_solutions" if debug_fn;
+      msg "after sub-select, n_solutions=$n_solutions" if debug;
     }
     my $i=0;
     for @pn -> $pn {  

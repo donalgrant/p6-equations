@@ -69,7 +69,6 @@ sub MAIN(
 
   # play boards
 
-
   sub do-move(Board $b, Play $p) {
     diag $p.display if opt('verbose');
     given $p.type {
@@ -85,7 +84,7 @@ sub MAIN(
     return True;
   }
 
-  set_opt('quiet') unless opt('verbose') or debug;
+  set_opt('quiet') unless opt('verbose');
   
   subtest "Play $nBoards Games" => {
     plan $nBoards * 3;

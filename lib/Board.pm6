@@ -78,7 +78,7 @@ class Board {
 
   method !cube_count(BagHash $B, &r) { $B.kxxv.grep(&r).elems }
   method !req_cube_count(&r) { self!cube_count($!R,&r) }
-  method !all_cube_count(&r) { self!cube_count(self.allowed,&r) }
+  method !all_cube_count(&r) { self!cube_count(self.allowed.BagHash,&r) }
   
   method n_req_ops { self!req_cube_count(&op) }
   method n_req_num { self!req_cube_count(&digit) }

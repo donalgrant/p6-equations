@@ -81,7 +81,7 @@ sub MAIN(
     
   lives-ok { say caller.list.join('') }, "caller";
   
-  subtest "debug_fn" => {
+  subtest "debug function name label" => {
     sub caller_test() {
       debug('keyword') ?? "triggering message" !! Nil;
     }
