@@ -283,8 +283,8 @@ class Player does Solutions {
     my $cube=$req.pick;
     msg "single cube $cube newly required with excess {$excess.kxxv.join(',')}" if debug;
     my @m_ops-excess=qw{ / * ^ }.grep(* (elem) $excess);  msg "m-excess: {@m_ops-excess.join(',')}" if debug 'excess';
-    my @a_ops-excess=qw{ + - }.grep(* (elem) $excess);    msg "a-excess: {@a_ops-excess.join(',')}" if debug 'excess';
-    my @s_ops-excess=qw{ @ }.grep(* (elem) $excess);      msg "s-excess: {@s_ops-excess.join(',')}" if debug 'excess';
+    my @a_ops-excess=qw{   + - }.grep(* (elem) $excess);  msg "a-excess: {@a_ops-excess.join(',')}" if debug 'excess';
+    my @s_ops-excess=qw{     @ }.grep(* (elem) $excess);  msg "s-excess: {@s_ops-excess.join(',')}" if debug 'excess';
     return gather {
       given $cube {
 #	when /1/ and so $m_ops-excess { take "$rpn$cube"~$m_ops-excess.pick }
@@ -299,17 +299,22 @@ class Player does Solutions {
 	when / <[+-]> / {
 	  Board_Solver.new(Board.new(U=>$excess,G=>'0').move_to_forbidden($cube)).solve.map({ take "$rpn$_$cube" });
 	}
-	default { msg "default expansion for $cube" if debug;
-	  for @s_ops-excess -> $op {  msg "solving for new required $cube using $op" if debug 'expand_num';
+	when / <digit>/ {
+	  msg "number expansion for $cube" if debug;
+	  for @s_ops-excess -> $op {
+	    msg "solving for new required $cube using $op" if debug 'expand_num';
 	    Board_Solver.new(Board.new(U=>$excess,G=>'1').move_to_forbidden($op).move_to_required($cube)).solve.map({ take "$_$rpn$op" });
 	  }
-	  for @m_ops-excess -> $op {  msg "solving for new required $cube using $op" if debug 'expand_num';
+	  for @m_ops-excess -> $op {
+	    msg "solving for new required $cube using $op" if debug 'expand_num';
 	    Board_Solver.new(Board.new(U=>$excess,G=>'1').move_to_forbidden($op).move_to_required($cube)).solve.map({ take "$rpn$_$op" });
 	  }
-	  for @a_ops-excess -> $op {  msg "solving for new required $cube using $op" if debug 'expand_num';
+	  for @a_ops-excess -> $op {
+	    msg "solving for new required $cube using $op" if debug 'expand_num';
 	    Board_Solver.new(Board.new(U=>$excess,G=>'0').move_to_forbidden($op).move_to_required($cube)).solve.map({ take "$rpn$_$op" });
 	  }
 	}
+	default { msg "find_expansion doesn't trigger for $cube" if debug }
       }
     }
   }
