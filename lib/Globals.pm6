@@ -16,10 +16,26 @@ multi sub set_opt( *@key ) is export { %opt{$_}=True for @key }
 multi sub clr_opt( *@key ) is export { %opt{$_}:delete for @key }
 multi sub clr_opt()        is export { %opt=() }
 
-multi sub debug()            is export { so %debug{caller[4].subname} or %debug<all> }
-multi sub debug( $key )      is export { %debug{$key}:exists ?? %debug{$key} !! ( so %debug{caller[4].subname} or so %debug<all> )  }
-multi sub debug_all( *@key ) is export { so %debug<all>:exists or so %debug{all @key}.grep( *.defined ) }
-multi sub debug_any( *@key ) is export { so %debug<all>:exists or so %debug{any @key}.grep( *.defined ) }
+# walk the list of backtrace subnames, get past empty blocks
+# and debug routines to find most recent real subname
+sub caller_subname() {
+  my $T=Backtrace.new.list;
+  my @debug_keys = $T.keys.grep({ $T[$_].subname ~~ /debug/ });
+  my $level=@debug_keys[ *-1 ];
+  while ++$level < $T.elems {
+    next unless $T[$level].subname;
+    next if $T[$level].subname ~~ /caller/;  # shouldn't happen
+    return $T[$level].subname; 
+  }   
+  die "Shouldn't get here";	
+}
+  
+sub debug_every()                      { so %debug<all>:exists            }
+sub debug_caller()                     { so %debug{caller_subname}:exists }
+multi sub debug()            is export { %debug<all> or debug_caller }
+multi sub debug( $key )      is export { %debug{$key}:exists ?? %debug{$key} !! ( debug_caller() or debug_every() )  }
+multi sub debug_all( *@key ) is export { debug_every() or so %debug{all @key}.grep( *.defined ) }
+multi sub debug_any( *@key ) is export { debug_every() or so %debug{any @key}.grep( *.defined ) }
 multi sub debug_list()       is export { %debug<>:k }
 
 
@@ -29,13 +45,11 @@ multi sub set_debug( *@key ) is export { %debug{$_}=True for @key }
 multi sub clr_debug( *@key ) is export { %debug{$_}:delete for @key }
 multi sub clr_debug()        is export { %debug=() }
 
-sub caller() is export { Backtrace.new.list }
-
 sub msg($txt='[ Undefined text ]', $src?, :$trace) is export {
 #  return if opt('quiet') and not so debug_list;
   my $out=$txt;
   $out ~= "[from $src]" if $src;
-  $out ~= caller() if $trace;
+  $out ~= caller_subname() if $trace;
   note $out; 
 }  
 

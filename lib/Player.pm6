@@ -180,10 +180,10 @@ class Player does Solutions {
       # by requiring something from the new one
       for $still_doable.list -> $r {
 	if (chance($!extend_solutions)) {  # make a parameter
-	  msg "Replacing $r; Board is \n {$B.display}" if debug;
+	  msg "Replacing $r; Board is \n {$B.display}"; # if debug;
 	  for $r.comb -> $cube {
 	    for self.find_replacement($B,BagHash.new($cube),RPN.new($r)) -> $new_rpn {
-	      msg "replacement for ($r) is ($new_rpn)" if debug;
+	      msg "replacement for ($r) is ($new_rpn)"; # if debug;
 	      my RPN $rep_rpn .=new($new_rpn);
 	      $still_doable.save($rep_rpn) if $BS.doable_solution($rep_rpn);  # make sure -- not sure we need the call to $BS
 	      self.save($rep_rpn);
@@ -201,7 +201,7 @@ class Player does Solutions {
       for $not_doable.rpn_list -> $r {
 	my $missing = $BS.cubes-missing_for( $r );
 	if ($missing.elems > 0) {       # some cube(s) in the RPN will never be available
-	  msg "{$r.aos} is no longer doable -- needs {$missing.kxxv}" if debug;
+	  msg "{$r.aos} is no longer doable -- needs {$missing.kxxv}"; # if debug;
 	  for self.find_replacement($B,$missing.BagHash,$r) -> $new_rpn {
 	    $still_doable.save($new_rpn);
 	    once { $not_doable.delete($r) }
@@ -210,7 +210,7 @@ class Player does Solutions {
 	  }
 	} else {                        # must be a new required which is not part of the RPN
 	  my $extra_req = $BS.req-not-in( $r );
-	  msg "{$r.aos} is no longer doable -- does not have required {$extra_req.kxxv}" if debug;
+	  msg "{$r.aos} is no longer doable -- does not have required {$extra_req.kxxv}"; # if debug;
 	  # only do this (for now?) for a single extra required element
 	  for self.find_expansion($B,$extra_req.BagHash,$r.excess($BS.B.allowed.Bag).BagHash,$r) -> $new_rpn {
 	    $still_doable.save($new_rpn);
@@ -244,7 +244,7 @@ class Player does Solutions {
       msg "creating a bag from missing={$missing.kxxv}; allowed={$B.allowed.kxxv}; rpn={$rpn.Bag.kxxv}" if debug;
       msg "bag sums are:  missing+allowed={($missing (+) $B.allowed).kxxv}; rpn-missing={($rpn.Bag (-) $missing).kxxv}" if debug;
       my Board_Solver $BS .= new(Board.new(U=>($B.allowed (-) ($rpn.Bag (-) $missing)).BagHash,G=>$cube));
-      msg "Set up a new Board with missing $cube as goal:\n{$BS.B.display}" if debug;
+      msg "Set up a new Board with missing $cube as goal:\n{$BS.B.display}"; # if debug;
       for 3,5 -> $ncubes {  # no need for 1, otherwise not really a replacement!
 	$BS.calculate_solutions($ncubes);
 	my @rpn_list = gather {
@@ -259,7 +259,7 @@ class Player does Solutions {
       }
       return [];
     }
-    msg "missing cube $cube is an operator" if debug;
+    msg "missing cube $cube is an operator"; # if debug;
     return [] if $cube~~/<[-/]>/;
     # can we construct a missing operator with an equation representing
     #     is inverse?  (can't do it for '-' and '/')
@@ -287,7 +287,7 @@ class Player does Solutions {
   method find_expansion(Board $B, BagHash $req, BagHash $excess, RPN $rpn) {
     return [] unless $req.total==1;  # only handling single newly req cube (for now)
     my $cube=$req.pick;
-    msg "single cube $cube newly required" if debug;
+    msg "single cube $cube newly required"; # if debug;
     my $m_ops-excess=qw{ / * ^ @ }.grep(* (elem) $excess);
     my $a_ops-excess=qw{ + - }.grep(* (elem) $excess);
     return gather {
@@ -295,18 +295,18 @@ class Player does Solutions {
 	when /1/ and so $m_ops-excess { take ( $_ eq '@' ) ?? "$cube$rpn$_" !! "$rpn$cube$_" with $m_ops-excess.pick }
 	when /0/ and so $a_ops-excess { take "$rpn$cube"~$a_ops-excess.pick }
 	when /<[/*^@]>/ {
-	  msg "got operator $_; calculate goal of 1 with Board from {$excess.kxxv.join('')}" if debug;
+	  msg "got operator $_; calculate goal of 1 with Board from {$excess.kxxv.join('')}"; # if debug;
 	  my Board $BO .= new(G=>'1', U=>$excess);
 	  $BO.move_to_forbidden($_);  # not available for Board solution -- will put in RPN though
-	  msg "To add $_, Try to solve:\n{$BO.display}" if debug;
+	  msg "To add $_, Try to solve:\n{$BO.display}"; # if debug;
 	}
 	when / <[+-]> / {
 	  my Board $BO .= new(G=>'0', U=>$excess);
 	  $BO.move_to_forbidden($_); # not available for Board solution -- will put in RPN though
-	  msg "To add $_, Try to solve:\n{$BO.display}" if debug;
+	  msg "To add $_, Try to solve:\n{$BO.display}"; # if debug;
 	}
 	default { # other single character options
-	  msg "cube is $cube, while excess={$excess.kxxv.join('')}" if debug;
+	  msg "cube is $cube, while excess={$excess.kxxv.join('')}"; # if debug;
 	}
       }
     }
