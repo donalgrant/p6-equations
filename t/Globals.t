@@ -79,8 +79,6 @@ sub MAIN(
     clr_debug;
   }
     
-  lives-ok { say caller.list.join('') }, "caller";
-  
   subtest "debug function name label" => {
     sub caller_test() {
       debug('keyword') ?? "triggering message" !! Nil;

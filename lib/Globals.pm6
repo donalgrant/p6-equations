@@ -18,20 +18,19 @@ multi sub clr_opt()        is export { %opt=() }
 
 # walk the list of backtrace subnames, get past empty blocks
 # and debug routines to find most recent real subname
-sub caller_subname() {
+sub debug_caller_subname() {
   my $T=Backtrace.new.list;
   my @debug_keys = $T.keys.grep({ $T[$_].subname ~~ /debug/ });
   my $level=@debug_keys[ *-1 ];
   while ++$level < $T.elems {
     next unless $T[$level].subname;
-    next if $T[$level].subname ~~ /caller/;  # shouldn't happen
     return $T[$level].subname; 
   }   
   die "Shouldn't get here";	
 }
   
 sub debug_every()                      { so %debug<all>:exists            }
-sub debug_caller()                     { so %debug{caller_subname}:exists }
+sub debug_caller()                     { so %debug{debug_caller_subname}:exists }
 multi sub debug()            is export { %debug<all> or debug_caller }
 multi sub debug( $key )      is export { %debug{$key}:exists ?? %debug{$key} !! ( debug_caller() or debug_every() )  }
 multi sub debug_all( *@key ) is export { debug_every() or so %debug{all @key}.grep( *.defined ) }
@@ -49,7 +48,7 @@ sub msg($txt='[ Undefined text ]', $src?, :$trace) is export {
 #  return if opt('quiet') and not so debug_list;
   my $out=$txt;
   $out ~= "[from $src]" if $src;
-  $out ~= caller_subname() if $trace;
+  $out ~= debug_caller_subname() if $trace;
   note $out; 
 }  
 
