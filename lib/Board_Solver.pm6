@@ -41,6 +41,14 @@ class Board_Solver does Solutions {
     my ($cube)=$g.keys;
     ( $cube (elem) $!B.U ) ?? $cube !! Nil;
   }
+
+  method solve(:$max_cubes=5,:$max_solutions=50000) {
+    for 1, {$_+2}...$max_cubes -> $n {
+      self.calculate_solutions($n,:$max_solutions);
+      return self.list if self.found;
+    }
+    return [];
+  }
   
   method calculate_solutions($ncubes,:$max_solutions=50000) {  # ncubes is maximum number of cubes to use
     msg "calculate_solutions for ncubes=$ncubes" if debug('calc');
