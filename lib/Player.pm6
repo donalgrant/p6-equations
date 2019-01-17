@@ -247,7 +247,7 @@ class Player does Solutions {
       msg "Set up a new Board with missing $cube as goal:\n{$BS.B.display}" if debug;
       for 3,5 -> $ncubes {  # no need for 1, otherwise not really a replacement!
 	$BS.calculate_solutions($ncubes);
-	my @rpn_list = gather {
+	return gather {
 	  for $BS.rpn_list -> $r {
 	    next if $cube (elem) $r.Bag;   # don't replace with the same cube!
 	    # create a new RPN by replacing in the original rpn
@@ -255,7 +255,6 @@ class Player does Solutions {
 	    take $new_rpn;
 	  }
 	}
-	return @rpn_list.elems > 0 ?? @rpn_list !! [];
       }
       return [];
     }
