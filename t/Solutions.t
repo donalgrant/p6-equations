@@ -32,10 +32,14 @@ sub MAIN(
   
   my $S=Solutions.new;
   isa-ok( $S, 'Solutions', "Empty Solutions" );
+
+  my $tally;
   
   subtest "Populating Solutions" => {
     nok( $S.found, "No solutions yet" );
-  
+
+    isa-ok( $S.save('0'),            'Solutions', "save a single digit");
+    isa-ok( $S.save(RPN.new('1')),   'Solutions', "save a single digit RPN");
     isa-ok( $S.save(RPN.new('11+')), 'Solutions', "save an RPN" );
     isa-ok( $S.save('22+'),          'Solutions', "save an RPN-string");
     
@@ -50,15 +54,16 @@ sub MAIN(
   
     isa-ok( $S.save( %( RPN.new('55*') => 1, RPN.new('333**') => 0, RPN.new('1234+++') => 11 ) ), 'Solutions', "save RPN hash (hash vals discarded)" );
     isa-ok( $S.save( @( RPN.new('78^'),      RPN.new('88^'),        RPN.new('93-2+')) ),          'Solutions', "save RPN array" );
-  
+
+    $tally=21;
     ok( $S.found, "We have some solutions" );
-    is( $S.elems, 20, "We've add 20 solutions" );
+    is( $S.elems, $tally, "We've added 21 unique solution values" );
   
     $S.save('333/*');
-    is( $S.elems, 20, "Duplicate solution doesn't change count" );
+    is( $S.elems, $tally, "Duplicate solution doesn't change count" );
   
     $S.save('33/*');
-    is( $S.elems, 20, "Invalid solution doesn't change count" );
+    is( $S.elems, $tally, "Invalid solution doesn't change count" );
   }
   
   subtest "Solution evalution" => {
@@ -67,25 +72,25 @@ sub MAIN(
   
     ok( $v == $e, "Solution values" );
   
-    is( $S.valid_for(3).sort, ( '333/*', '31/' ).sort,                     "Two rpns work for 3" );
+    is( $S.valid_for(3).sort, ( '333/*', '31/' ).sort,                          "Two rpns work for 3" );
     is( $S.formable( Bag.new(qw{ 1 3 3 3 4 / * 7 8 8 ^ }) ).sort,
-        ( '33/', '31/', '333/*', '78^', '88^' ).sort,                      "formable solutions" );
+        ( '1', '33/', '31/', '333/*', '78^', '88^' ).sort,                      "formable solutions" );
     is( $S.formable( Bag.new(qw{ 1 3 3 3 4 / * 7 8 8 ^ }), Bag.new(qw{ 3 3 / }) ).sort,
-        ( '33/', '333/*' ).sort,                                           "formable solutions with 3 3 required" );
+        ( '33/', '333/*' ).sort,                                                "formable solutions with 3 3 required" );
     is( $S.one-away( Bag.new(qw{ 3 3 3 / }) ).sort,
-        ( '31/', '333/*' ).sort,                                           "one-away solutions" );
+        ( '1', '31/', '333/*' ).sort,                                           "one-away solutions" );
     is( $S.one-away( Bag.new(qw{ 3 3 3 / }), Bag.new(qw{ 1 }) ).sort,
-        ( '31/' ).sort,                                                    "one-away solutions with 1 required" );
+        ( '1', '31/' ).sort,                                                    "one-away solutions with 1 required" );
   
     my @R=$S.rpn_list;
-    is( @R.elems, 20, "RPN List has correct number of elements" );
+    is( @R.elems, $tally, "RPN List has correct number of elements" );
     isa-ok( @R[0], 'RPN', "First element is RPN" );
     
     ok( $v == @R.map({ (+$_).floor }).Set, "RPN values match values" );
     
     isa-ok( $S.delete(@R[0]),      'Solutions', "can delete RPN" );
-    isa-ok( $S.delete(@R[1].Str),      'Solutions', "can delete RPN Str");
-    is( $S.elems, 18, "Number of elements reduced by one after two deletions, one duplicate" );
+    isa-ok( $S.delete(@R[1].Str),  'Solutions', "can delete RPN Str");
+    is( $S.elems, $tally - 2, "Number of elements reduced by one after two deletions, one duplicate" );
   }
   
   lives-ok( { msg $S.display }, "Can display Solutions" );

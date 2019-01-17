@@ -76,6 +76,7 @@ sub num_bag(Bag $b) is export { filter_bag($b, &digit ) }
 sub rpn_value ($rpn) is export { 
   return Nil unless $rpn.defined;
   return %RPN_CACHE{$rpn} if %RPN_CACHE{$rpn}.defined;
+  return %RPN_CACHE{$rpn}= +$rpn if $rpn.chars==1;
   my @list=$rpn.comb;
   return 0 unless (+@list);
   my @stack;

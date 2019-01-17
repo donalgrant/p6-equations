@@ -180,10 +180,10 @@ class Player does Solutions {
       # by requiring something from the new one
       for $still_doable.list -> $r {
 	if (chance($!extend_solutions)) {  # make a parameter
-	  msg "Replacing $r; Board is \n {$B.display}"; # if debug;
+	  msg "Replacing $r; Board is \n {$B.display}" if debug;
 	  for $r.comb -> $cube {
-	    for self.find_replacement($B,BagHash.new($cube),RPN.new($r)) -> $new_rpn {
-	      msg "replacement for ($r) is ($new_rpn)"; # if debug;
+	    for find_replacement($B,BagHash.new($cube),RPN.new($r)) -> $new_rpn {
+	      msg "replacement for ($r) is ($new_rpn)" if debug;
 	      my RPN $rep_rpn .=new($new_rpn);
 	      $still_doable.save($rep_rpn) if $BS.doable_solution($rep_rpn);  # make sure -- not sure we need the call to $BS
 	      self.save($rep_rpn);
@@ -202,21 +202,21 @@ class Player does Solutions {
 	my $missing = $BS.cubes-missing_for( $r );
 	if ($missing.elems > 0) {       # some cube(s) in the RPN will never be available
 	  msg "{$r.aos} is no longer doable -- needs {$missing.kxxv}" if debug;
-	  for self.find_replacement($B,$missing.BagHash,$r) -> $new_rpn {
+	  for find_replacement($B,$missing.BagHash,$r) -> $new_rpn {
 	    $still_doable.save($new_rpn);
 	    once { $not_doable.delete($r) }
 	    self.save($new_rpn);
-	    msg "found replacement:  $r --> $new_rpn" if debug;
+	    msg "found replacement:  $r --> $new_rpn" if debug 'replacement';
 	  }
 	} else {                        # must be a new required which is not part of the RPN
 	  my $extra_req = $BS.req-not-in( $r );
-	  msg "{$r.aos} is no longer doable -- does not have required {$extra_req.kxxv}" if debug;
+	  msg "{$r.aos} is no longer doable -- does not have required {$extra_req.kxxv}" if debug 'expansion';
 	  # only do this (for now?) for a single extra required element
-	  for self.find_expansion($B,$extra_req.BagHash,$r.excess($BS.B.allowed.Bag).BagHash,$r) -> $new_rpn {
+	  for find_expansion($B,$extra_req.BagHash,$r.excess($BS.B.allowed.Bag).BagHash,$r) -> $new_rpn {
 	    $still_doable.save($new_rpn);
 	    once { $not_doable.delete($r) }
 	    self.save($new_rpn);
-	    msg "found expansion:  $r --> $new_rpn" if debug;
+	    msg "found expansion:  $r --> $new_rpn" if debug 'expansion';
 	  }
 	}
       }
@@ -230,7 +230,7 @@ class Player does Solutions {
 
   # returns a list of replacement rpn-strings, or empty list if none found
   # maybe make this whole thing a gather / take?
-  method find_replacement(Board $B, BagHash $missing, RPN $rpn) {
+  sub find_replacement(Board $B, BagHash $missing, RPN $rpn) {
     return [] unless $B.R (<=) $rpn.Bag;   # must be able to use all required cubes
     if ($missing.total > 1) {
       msg "find_replacement for $rpn is missing ({$missing.kxxv}) more than one cube" if debug;
@@ -244,7 +244,7 @@ class Player does Solutions {
       msg "creating a bag from missing={$missing.kxxv}; allowed={$B.allowed.kxxv}; rpn={$rpn.Bag.kxxv}" if debug;
       msg "bag sums are:  missing+allowed={($missing (+) $B.allowed).kxxv}; rpn-missing={($rpn.Bag (-) $missing).kxxv}" if debug;
       my Board_Solver $BS .= new(Board.new(U=>($B.allowed (-) ($rpn.Bag (-) $missing)).BagHash,G=>$cube));
-      msg "Set up a new Board with missing $cube as goal:\n{$BS.B.display}"; # if debug;
+      msg "Set up a new Board with missing $cube as goal:\n{$BS.B.display}" if debug;
       for 3,5 -> $ncubes {  # no need for 1, otherwise not really a replacement!
 	$BS.calculate_solutions($ncubes);
 	my @rpn_list = gather {
@@ -259,7 +259,7 @@ class Player does Solutions {
       }
       return [];
     }
-    msg "missing cube $cube is an operator"; # if debug;
+    msg "missing cube $cube is an operator" if debug;
     return [] if $cube~~/<[-/]>/;
     # can we construct a missing operator with an equation representing
     #     is inverse?  (can't do it for '-' and '/')
@@ -271,50 +271,31 @@ class Player does Solutions {
     return [];
   }
 
-  # can we extend the formula to include the new number using
-  #   an identity relation?  If R is the original formula, and 
-  #   w is the new number:
-  #     R+(w-F) R-(w-F) where F is 1,3,5 cubes which evaluate to w (needs +,- or -,-)
-  #     R/(w/F) R*(w/F) where F is 1,3,5 cubes which evaluate to w (needs /,* or /,/)
-  #     (w/F)@R R^(w/F) where F is 1,3,5 cubes which evaluate to w (needs /,@ or ^,/)
+  my %goal-for;
+  %goal-for{$_}='1' for qw{ / * ^ @ };
+  %goal-for{$_}='0' for qw{ + - };
   
-  method find_expansion(Board $B, BagHash $req, BagHash $excess, RPN $rpn) {
+  multi sub expand-list(BagHash $e, $f-cube, $r-cube) { msg "expand-list 3 args with $f-cube and $r-cube" if debug;
+    Board_Solver.new(Board.new(U=>$e.clone,G=>%goal-for{$f-cube}).move_to_forbidden($f-cube).move_to_required($r-cube)).solve.list
+  }
+  multi sub expand-list(BagHash $e, $f-cube) { msg "expand-list 2 args with $f-cube" if debug;
+    Board_Solver.new(Board.new(U=>$e.clone,G=>%goal-for{$f-cube}).move_to_forbidden($f-cube)).solve.list
+  }
+  
+  sub find_expansion(Board $B, BagHash $req, BagHash $excess, RPN $rpn) {
     return [] unless $req.total==1;  # only handling single newly req cube (for now)
     my $cube=$req.pick;
     msg "single cube $cube newly required with excess {$excess.kxxv.join(',')}" if debug;
-    my @m_ops-excess=qw{ / * ^ }.grep(* (elem) $excess);  msg "m-excess: {@m_ops-excess.join(',')}" if debug 'excess';
-    my @a_ops-excess=qw{   + - }.grep(* (elem) $excess);  msg "a-excess: {@a_ops-excess.join(',')}" if debug 'excess';
-    my @s_ops-excess=qw{     @ }.grep(* (elem) $excess);  msg "s-excess: {@s_ops-excess.join(',')}" if debug 'excess';
+    my @m_ops-excess=qw{ / * ^ + - }.grep(* (elem) $excess);  
+    my @s_ops-excess=qw{     @     }.grep(* (elem) $excess);  
     return gather {
       given $cube {
-#	when /1/ and so $m_ops-excess { take "$rpn$cube"~$m_ops-excess.pick }
-#	when /1/ and so $s_ops-excess { take "$cube$rpn"~$s_ops-excess.pick }
-#	when /0/ and so $a_ops-excess { take "$rpn$cube"~$a_ops-excess.pick }
-	when /<[*/^]>/ {
-	  Board_Solver.new(Board.new(U=>$excess,G=>'1').move_to_forbidden($cube)).solve.map({ take "$rpn$_$cube" });
+	when /<[*/^+-]>/ { expand-list($excess,$cube).map({ take "$rpn$_$cube" }) }
+	when /  <[@]>  / { expand-list($excess,$cube).map({ take "$_$rpn$cube" }) }
+	when / <digit> / { 
+	  for @s_ops-excess -> $op { expand-list($excess,$op,$cube).map({ take "$_$rpn$op" }) }
+	  for @m_ops-excess -> $op { expand-list($excess,$op,$cube).map({ take "$rpn$_$op" }) }
 	}
-	when / <[@]>  / {
-	  Board_Solver.new(Board.new(U=>$excess,G=>'1').move_to_forbidden($cube)).solve.map({ take "$_$rpn$cube" });
-	}
-	when / <[+-]> / {
-	  Board_Solver.new(Board.new(U=>$excess,G=>'0').move_to_forbidden($cube)).solve.map({ take "$rpn$_$cube" });
-	}
-	when / <digit>/ {
-	  msg "number expansion for $cube" if debug;
-	  for @s_ops-excess -> $op {
-	    msg "solving for new required $cube using $op" if debug 'expand_num';
-	    Board_Solver.new(Board.new(U=>$excess,G=>'1').move_to_forbidden($op).move_to_required($cube)).solve.map({ take "$_$rpn$op" });
-	  }
-	  for @m_ops-excess -> $op {
-	    msg "solving for new required $cube using $op" if debug 'expand_num';
-	    Board_Solver.new(Board.new(U=>$excess,G=>'1').move_to_forbidden($op).move_to_required($cube)).solve.map({ take "$rpn$_$op" });
-	  }
-	  for @a_ops-excess -> $op {
-	    msg "solving for new required $cube using $op" if debug 'expand_num';
-	    Board_Solver.new(Board.new(U=>$excess,G=>'0').move_to_forbidden($op).move_to_required($cube)).solve.map({ take "$rpn$_$op" });
-	  }
-	}
-	default { msg "find_expansion doesn't trigger for $cube" if debug }
       }
     }
   }

@@ -42,12 +42,13 @@ class Board_Solver does Solutions {
     ( $cube (elem) $!B.U ) ?? $cube !! Nil;
   }
 
-  method solve(:$max_cubes=5,:$max_solutions=50000) {
+  method solve(:$max_cubes=5,:$max_solutions=50000,:$quit_on_found=True) {
     for 1, {$_+2}...$max_cubes -> $n {
       self.calculate_solutions($n,:$max_solutions);
-      return self.list if self.found;
+      msg "in solve after calculate with n=$n; solutions {self.list.join('; ')}" if debug;
+      return self if $quit_on_found and self.found;
     }
-    return [];
+    self;
   }
   
   method calculate_solutions($ncubes,:$max_solutions=50000) {  # ncubes is maximum number of cubes to use
@@ -57,6 +58,7 @@ class Board_Solver does Solutions {
     return self unless $!B.equation_feasible;
     my Bag $num = num_bag($!B.allowed.Bag);
     my Bag $ops = ops_bag($!B.allowed.Bag);
+    if ($ncubes==1) { self.save(~$!B.goal) if $!B.goal (elem) $num; return self }
     my $nops=min($ops.total,$num.total-1,floor($ncubes/2));
     my $nnum=min($nops+1,$num.total,$ncubes-$nops);
     msg "nops=$nops; nnum=$nnum" if debug;

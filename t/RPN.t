@@ -58,6 +58,9 @@ sub MAIN(
     is( RPN.new('76-').Numeric, 1,  "simple subtraction" );
     is( RPN.new('38@').Numeric, 2,  "roots" );
     is( RPN.new('25^').Numeric, 32, "exponent" );
+
+    is( RPN.new('0').Numeric, 0, "single digit" );
+    isa-ok RPN.new('1'), 'RPN', "single digit construction";
     
     is( RPN.new('98+7-6*5/2^').Numeric, 144, "chain calculations" );
     is( RPN.new('55555+-/*').Numeric,    -5, "stacked operations" );
