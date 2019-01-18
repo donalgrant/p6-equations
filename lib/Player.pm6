@@ -228,18 +228,78 @@ class Player does Solutions {
     self.choose_move($B);  
   }
 
+  sub try_replace_pls(BagHash $excess, $cube, $alt_cube,$rpn, BagHash $req) {
+    return unless $alt_cube (elem) $excess;
+    my $nskip=0;
+    loop {
+      my $rpn_extract=$rpn.rpn_at_op($cube,$nskip);
+      return unless $rpn_extract.defined;
+      my ($arg1,$arg2,$op)=decompose_rpn($rpn.rpn_at_op($cube,$nskip));
+      Board_Solver.new(
+	Board.new(U=>$excess,G=>(-rpn_value($arg2)).Str).move_to_forbidden($alt_cube)
+      ).solve.list.map({ my $n=$arg1~$_~$alt_cube; take $n if RPN.new($n).has($req) });
+      Board_Solver.new(
+	Board.new(U=>$excess,G=>(-rpn_value($arg1)).Str).move_to_forbidden($alt_cube)
+      ).solve.list.map({ my $n=$arg2~$_~$alt_cube; take $n if RPN.new($n).has($req) });
+      $nskip++;
+    }
+  }
+  sub try_replace_mlt(BagHash $excess, $cube, $alt_cube,$rpn, BagHash $req) {
+    return unless $alt_cube (elem) $excess;
+    my $nskip=0;
+    loop {
+      my $rpn_extract=$rpn.rpn_at_op($cube,$nskip);
+      return unless $rpn_extract.defined;
+      my ($arg1,$arg2,$op)=decompose_rpn($rpn.rpn_at_op($cube,$nskip));
+      Board_Solver.new(
+	Board.new(U=>$excess,G=>(1/rpn_value($arg2)).Str).move_to_forbidden($alt_cube)
+      ).solve.list.map({ my $n=$arg1~$_~$alt_cube; take $n if RPN.new($n).has($req) }) unless rpn_value($arg2)==0;
+      Board_Solver.new(
+	Board.new(U=>$excess,G=>(1/rpn_value($arg1)).Str).move_to_forbidden($alt_cube)
+      ).solve.list.map({ my $n=$arg2~$_~$alt_cube; take $n if RPN.new($n).has($req) }) unless rpn_value($arg1)==0;
+      $nskip++;
+    }
+  }
+  sub try_replace_exp(BagHash $excess, $cube, $alt_cube,$rpn, BagHash $req) {
+    return unless $alt_cube (elem) $excess;
+    my $nskip=0;
+    loop {
+      my $rpn_extract=$rpn.rpn_at_op($cube,$nskip);
+      return unless $rpn_extract.defined;
+      my ($arg1,$arg2,$op)=decompose_rpn($rpn.rpn_at_op($cube,$nskip));
+      next if rpn_value($arg2)==0;
+      Board_Solver.new(
+	Board.new(U=>$excess,G=>(1/rpn_value($arg2)).Str).move_to_forbidden($alt_cube)
+      ).solve.list.map({ my $n=$_~$arg1~$alt_cube; take $n if RPN.new($n).has($req) });
+      $nskip++;
+    }
+  }
+  sub try_replace_rad(BagHash $excess, $cube, $alt_cube,$rpn, BagHash $req) {
+    return unless $alt_cube (elem) $excess;
+    my $nskip=0;
+    loop {
+      my $rpn_extract=$rpn.rpn_at_op($cube,$nskip);
+      return unless $rpn_extract.defined;
+      my ($arg1,$arg2,$op)=decompose_rpn($rpn.rpn_at_op($cube,$nskip));
+      next if rpn_value($arg1)==0;
+      Board_Solver.new(
+	Board.new(U=>$excess,G=>(1/rpn_value($arg1)).Str).move_to_forbidden($alt_cube)
+      ).solve.list.map({ my $n=$arg2~$_~$alt_cube; take $n if RPN.new($n).has($req) });
+      $nskip++;
+    }
+  }
+  
   # returns a list of replacement rpn-strings, or empty list if none found
   # maybe make this whole thing a gather / take?
   sub find_replacement(Board $B, BagHash $missing, RPN $rpn) {
     return [] unless $B.R (<=) $rpn.Bag;   # must be able to use all required cubes
     return [] if $missing.total > 1;       # only replace one cube (for now)
     my $cube=$missing.pick;
+    my $excess=($B.allowed (-) ($rpn.Bag (-) $missing)).BagHash;
+    msg "find a replacement for $cube in $rpn using excess {$excess.kxxv.join(',')}" if debug;
     given $cube {
       when /<digit>/ {
-	msg "creating a bag from missing={$missing.kxxv}; allowed={$B.allowed.kxxv}; rpn={$rpn.Bag.kxxv}" if debug;
-	msg "bag sums are:  missing+allowed={($missing (+) $B.allowed).kxxv}; rpn-missing={($rpn.Bag (-) $missing).kxxv}" if debug;
-	my Board_Solver $BS .= new(Board.new(U=>($B.allowed (-) ($rpn.Bag (-) $missing)).BagHash,G=>$cube));
-	msg "Set up a new Board with missing $cube as goal:\n{$BS.B.display}" if debug;
+	my Board_Solver $BS .= new(Board.new(U=>$excess,G=>$cube));
 	return gather {
 	  for $BS.solve(min_cubes=>3).rpn_list -> $r {
 	    next if $cube (elem) $r.Bag;   # don't replace with the same cube!
@@ -249,16 +309,10 @@ class Player does Solutions {
 	  }
 	}
       }
-      when /<[+*^@]>/ {
-	
-	
-	# can we construct a missing operator with an equation representing
-	#     its inverse?  (can't do it for '-' and '/')
-	#   x+w --> x-(y-z)   where w = z-y
-	#   x*w --> x/(y/z)   where w = z/y
-	#   x^w --> (y/z)@x   where w = z/y
-	#   w@x --> (x^(y/z)) where w = z/y
-      }
+      when /<[+]>/ { return gather try_replace_pls($excess,'+','-',$rpn,$B.R) }
+      when /<[*]>/ { return gather try_replace_mlt($excess,'*','/',$rpn,$B.R) }
+      when /<[^]>/ { return gather try_replace_exp($excess,'^','@',$rpn,$B.R) }
+      when /<[@]>/ { return gather try_replace_rad($excess,'@','^',$rpn,$B.R) }
     }
     return [];
   }

@@ -232,6 +232,19 @@ sub MAIN(
     is( rpn_at_op($r,'+',3), $r,      "Fourth rpn at + is original rpn" );
     nok( rpn_at_op($r,'+',4), "No fifth rpn at +" );
     is( RPN.new($r).rpn_at_op('+',2), "987^+", "method call with skip" );
+
+    my @rpn_at_index=qw{ 3 3 33+ 6 6 6 66+ 666+* 9 8 7 87^ 987^+ 666+*987^+- };
+    for @rpn_at_index.keys {
+      is( rpn_at_index($r,$_), @rpn_at_index[$_], "March through index:  $_" );
+    }
+    is( rpn_at_index($r,$r.chars-1), $r, "Last index" );
+    dies-ok( { rpn_at_index($r,$r.chars) }, "out of range index" );
+
+    dies-ok( { decompose_rpn("55++") }, "invalid RPN not allowed" );
+    dies-ok( { decompose_rpn("5") },    "valid single-digit RPN not allowed" );
+
+    is( decompose_rpn("55+"), qw{ 5 5 + },             "simple RPN" );
+    is( decompose_rpn($r),    qw{ 33+ 666+*987^+- + }, "complex RPN decomposition" );
   }   
 
   done-testing;

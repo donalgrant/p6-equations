@@ -55,7 +55,7 @@ sub MAIN(
 
   my $g=$P1.choose_goal($B);
 
-  assert { $g.defined }, "Found a goal from {$B.display}";
+  assert { $g.defined }, "Found a goal from:\n{$B.display}";
 
   $B.move_to_goal($g);
 

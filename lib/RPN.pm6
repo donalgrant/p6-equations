@@ -26,11 +26,13 @@ class RPN {
   multi method same-value( RPN $r ) { return self.Numeric == $r.Numeric }
   multi method same-value( Str $r ) { return self.Numeric == rpn_value($r) }
 
-  method formable(    Bag $per, Bag $req=Bag.new ) { (self.Bag (<=) ($per (+) $req))           and (self.Bag (>=) $req) }
-  method one-away(    Bag $per, Bag $req=Bag.new ) { (self.Bag  (-) ($per (+) $req)).total==1  and (self.Bag (>=) $req) }
+  method formable(    Bag $per, Bag $req=Bag.new ) { (self.Bag (<=) ($per (+) $req))           and self.has($req) }
+  method one-away(    Bag $per, Bag $req=Bag.new ) { (self.Bag  (-) ($per (+) $req)).total==1  and self.has($req) }
   
-  method cubes-to-go( Bag $per, Bag $req=Bag.new ) { ( self.Bag (>=) $req ) ?? ( (self.Bag (-) $req) (-) $per ) !! Nil }
+  method cubes-to-go( Bag $per, Bag $req=Bag.new ) { self.has($req) ?? ( (self.Bag (-) $req) (-) $per ) !! Nil }
   method req-missing( Bag $req )                   { $req (-) self.Bag }
+  
+  method has( Bag $req )  { self.Bag (>=) $req }
   
   method excess( Bag $all ) { $all (-) self.Bag }
 
@@ -221,19 +223,31 @@ sub full_parens ($s-in) is export {
   return parens_on_ops(@c).join('');
 }
 
+# start at index and work back to find valid RPN
+sub rpn_at_index(Str $rpn where valid_rpn($rpn), Int $i where 0 <= $i <= $rpn.chars-1) is export {
+  for 0..$i {
+    my $s=$rpn.substr($i-$_,1+$_);
+    return $s if valid_rpn($s);
+  }
+  quit "Should never fail to find valid rpn for $rpn starting at index $i";
+}
 
 # work back from $op to find first valid RPN
 
 sub rpn_at_op(Str $rpn where valid_rpn($rpn), Str $op where $op~~/<op>/, Int $nskip=0) is export {
   my $i=$rpn.index($op);
   for ^$nskip { $i=$rpn.index($op,$i+1) }
-  return Nil unless $i.defined;
-  for ^($i-1) {
-    my $s=$rpn.substr($i-$_-2,3+$_);
-    return $s if valid_rpn($s);
-  }
-  quit "Should never fail to find valid rpn for $rpn with op $op at index $i";
+  return $i.defined ?? rpn_at_index($rpn,$i) !! Nil;
 }
+
+# divide RPN into first RPN argument, second RPN argument, and operator
+sub decompose_rpn(Str $rpn where (valid_rpn($rpn) and $rpn.chars > 1)) is export {
+  my $op=$rpn.substr(*-1);
+  my $arg2=rpn_at_index($rpn,$rpn.chars-2);
+  my $arg1=$rpn.substr(0,$rpn.chars-$op.chars-$arg2.chars);
+  return [$arg1,$arg2,$op];
+}
+
 
 =begin pod
 
