@@ -33,6 +33,8 @@ class RPN {
   method req-missing( Bag $req )                   { $req (-) self.Bag }
   
   method excess( Bag $all ) { $all (-) self.Bag }
+
+  method rpn_at_op(Str $op, Int $nskip=0) { rpn_at_op($!rpn,$op,$nskip) }
 }
 
 # Exported Global Functions -- not part of the RPN class itself
@@ -217,6 +219,20 @@ sub full_parens ($s-in) is export {
   return $s unless @c.elems>=3;
   while (process_inner_parens(@c)) {}   # returns false when no substitutions are left
   return parens_on_ops(@c).join('');
+}
+
+
+# work back from $op to find first valid RPN
+
+sub rpn_at_op(Str $rpn where valid_rpn($rpn), Str $op where $op~~/<op>/, Int $nskip=0) is export {
+  my $i=$rpn.index($op);
+  for ^$nskip { $i=$rpn.index($op,$i+1) }
+  return Nil unless $i.defined;
+  for ^($i-1) {
+    my $s=$rpn.substr($i-$_-2,3+$_);
+    return $s if valid_rpn($s);
+  }
+  quit "Should never fail to find valid rpn for $rpn with op $op at index $i";
 }
 
 =begin pod

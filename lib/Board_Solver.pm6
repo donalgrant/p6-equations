@@ -42,8 +42,8 @@ class Board_Solver does Solutions {
     ( $cube (elem) $!B.U ) ?? $cube !! Nil;
   }
 
-  method solve(:$max_cubes=5,:$max_solutions=50000,:$quit_on_found=True) {
-    for 1, {$_+2}...$max_cubes -> $n {
+  method solve(:$min_cubes=1,:$max_cubes=5,:$max_solutions=50000,:$quit_on_found=True) {
+    for $min_cubes, {$_+2}...$max_cubes -> $n {
       self.calculate_solutions($n,:$max_solutions);
       msg "in solve after calculate with n=$n; solutions {self.list.join('; ')}" if debug;
       return self if $quit_on_found and self.found;

@@ -217,6 +217,23 @@ sub MAIN(
     ok( num_bag(Bag.new(qw{ 1 2 2 3 4 5 + + / / * * * ^ @ })) == Bag.new(qw{ 1 2 2 3 4 5 }),       "extract Bag of digits");
   }
   
+  subtest "extract RPNs" => {
+    is( rpn_at_op("568++8/",'/'), "568++8/", "extract the entire RPN" );
+    is( rpn_at_op("568++8/",'+'), "68+",     "extract the first sum" );
+    is( RPN.new("568++8/").rpn_at_op('+'), "68+", "method version" );
+    dies-ok( { rpn_at_op("568+",'+') }, "Invalid RPN" );
+    dies-ok( { rpn_at_op("56+", '7') }, "Invalid Op" );
+    nok( rpn_at_op("56+", '/'), "Operator not found" );
+    my $r="33+666+*987^+-+";
+    is( rpn_at_op($r,'+'), "33+",   "First rpn at +" );
+    is( rpn_at_op($r,'+',0), "33+", "Same, specifying skip=0" );
+    is( rpn_at_op($r,'+',1), "66+", "Second rpn at +" );
+    is( rpn_at_op($r,'+',2), "987^+", "Third rpn at +" );
+    is( rpn_at_op($r,'+',3), $r,      "Fourth rpn at + is original rpn" );
+    nok( rpn_at_op($r,'+',4), "No fifth rpn at +" );
+    is( RPN.new($r).rpn_at_op('+',2), "987^+", "method call with skip" );
+  }   
+
   done-testing;
 
 }

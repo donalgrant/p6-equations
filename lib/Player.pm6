@@ -232,23 +232,16 @@ class Player does Solutions {
   # maybe make this whole thing a gather / take?
   sub find_replacement(Board $B, BagHash $missing, RPN $rpn) {
     return [] unless $B.R (<=) $rpn.Bag;   # must be able to use all required cubes
-    if ($missing.total > 1) {
-      msg "find_replacement for $rpn is missing ({$missing.kxxv}) more than one cube" if debug;
-      return [];
-    }
-    my ($cube)=$missing.kxxv;
-    if ($cube~~/<digit>/) {
-      # can we construct a missing number with a 3 or 5 element equation
-      #     from available cubes not used by RPN?	
-      # Set up a Board_Solver to try to find missing cube
-      msg "creating a bag from missing={$missing.kxxv}; allowed={$B.allowed.kxxv}; rpn={$rpn.Bag.kxxv}" if debug;
-      msg "bag sums are:  missing+allowed={($missing (+) $B.allowed).kxxv}; rpn-missing={($rpn.Bag (-) $missing).kxxv}" if debug;
-      my Board_Solver $BS .= new(Board.new(U=>($B.allowed (-) ($rpn.Bag (-) $missing)).BagHash,G=>$cube));
-      msg "Set up a new Board with missing $cube as goal:\n{$BS.B.display}" if debug;
-      for 3,5 -> $ncubes {  # no need for 1, otherwise not really a replacement!
-	$BS.calculate_solutions($ncubes);
+    return [] if $missing.total > 1;       # only replace one cube (for now)
+    my $cube=$missing.pick;
+    given $cube {
+      when /<digit>/ {
+	msg "creating a bag from missing={$missing.kxxv}; allowed={$B.allowed.kxxv}; rpn={$rpn.Bag.kxxv}" if debug;
+	msg "bag sums are:  missing+allowed={($missing (+) $B.allowed).kxxv}; rpn-missing={($rpn.Bag (-) $missing).kxxv}" if debug;
+	my Board_Solver $BS .= new(Board.new(U=>($B.allowed (-) ($rpn.Bag (-) $missing)).BagHash,G=>$cube));
+	msg "Set up a new Board with missing $cube as goal:\n{$BS.B.display}" if debug;
 	return gather {
-	  for $BS.rpn_list -> $r {
+	  for $BS.solve(min_cubes=>3).rpn_list -> $r {
 	    next if $cube (elem) $r.Bag;   # don't replace with the same cube!
 	    # create a new RPN by replacing in the original rpn
 	    my $new_rpn = $rpn.Str;  $new_rpn~~s/$cube/{~$r}/;
@@ -256,17 +249,17 @@ class Player does Solutions {
 	  }
 	}
       }
-      return [];
+      when /<[+*^@]>/ {
+	
+	
+	# can we construct a missing operator with an equation representing
+	#     its inverse?  (can't do it for '-' and '/')
+	#   x+w --> x-(y-z)   where w = z-y
+	#   x*w --> x/(y/z)   where w = z/y
+	#   x^w --> (y/z)@x   where w = z/y
+	#   w@x --> (x^(y/z)) where w = z/y
+      }
     }
-    msg "missing cube $cube is an operator" if debug;
-    return [] if $cube~~/<[-/]>/;
-    # can we construct a missing operator with an equation representing
-    #     is inverse?  (can't do it for '-' and '/')
-    #   x+w --> x-(y-z)   where w = z-y
-    #   x*w --> x/(y/z)   where w = z/y
-    #   x^w --> (y/z)@x   where w = z/y
-    #   w@x --> (x^(y/z)) where w = z/y
-    
     return [];
   }
 
