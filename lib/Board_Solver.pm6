@@ -93,6 +93,7 @@ class Board_Solver does Solutions {
         for @ops_slots -> $slot {  # now construct this RPN
 	  my RPN $rpn .= new(num-ops-slot($pn,$po,$slot));  # could be undefined ('10/', etc)
 	  self.save($rpn) if $rpn.defined and +$rpn==$!B.goal;
+	  msg "{num-ops-slot($pn,$po,$slot)} at count=$i / $n_solutions" if debug('count') and ++$i %% 5000;
 	}
       }
     }

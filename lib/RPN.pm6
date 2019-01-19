@@ -72,6 +72,9 @@ grammar WF_RPN {
   token rpn_op   { <op>    { $*OP_CNT++  } <?{ $*OP_CNT <= $*DGT_CNT }> }
 }
 
+multi sub rpn(Str $s) is export { RPN.new($s) }
+multi sub rpn(RPN $r) is export { $r }
+
 sub filter_bag(Bag $b, &filter) { Bag.new( $b.kxxv.grep({ &filter }) ) }
   
 sub ops_bag(Bag $b) is export { filter_bag($b, &op    ) }

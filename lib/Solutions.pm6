@@ -9,7 +9,7 @@ role Solutions {
 
   multi method save(Any)      { self }  # nop in case an attempt to save undefined RPN
   multi method save(RPN $rpn) { %!S{$rpn.Str} = $rpn.Numeric if $rpn.defined; self }  # filter out invalid RPNs
-  multi method save(Str $rpn) { self.save(RPN.new($rpn)) }
+  multi method save(Str $rpn) { self.save(rpn($rpn)) }
   
   multi method save(%rpn) { for %rpn<>:k  -> $r { self.save($r) }; self }
   multi method save(@rpn) { for @rpn      -> $r { self.save($r) }; self }

@@ -217,6 +217,13 @@ sub MAIN(
     ok( num_bag(Bag.new(qw{ 1 2 2 3 4 5 + + / / * * * ^ @ })) == Bag.new(qw{ 1 2 2 3 4 5 }),       "extract Bag of digits");
   }
   
+  subtest "rpn" => {
+    isa-ok( rpn('3'),   'RPN', "rpn sub for a digit" );
+    isa-ok( rpn('54+'), 'RPN', "rpn sub for an equation" );
+    isa-ok( rpn(rpn('54+')), 'RPN', "rpn on an rpn" );
+    is-deeply(rpn(rpn('54+')), rpn('54+'), "rpn identity on RPN" );
+  }	
+
   subtest "extract RPNs" => {
     is( rpn_at_op("568++8/",'/'), "568++8/", "extract the entire RPN" );
     is( rpn_at_op("568++8/",'+'), "68+",     "extract the first sum" );
