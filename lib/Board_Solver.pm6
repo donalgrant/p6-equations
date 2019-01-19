@@ -42,7 +42,7 @@ class Board_Solver does Solutions {
     ( $cube (elem) $!B.U ) ?? $cube !! Nil;
   }
 
-  method solve(:$min_cubes=1,:$max_cubes=5,:$max_solutions=50000,:$quit_on_found=True) {
+  method solve(:$min_cubes=1,:$max_cubes=5,:$max_solutions=20000,:$quit_on_found=True) {
     for $min_cubes, {$_+2}...$max_cubes -> $n {
       self.calculate_solutions($n,:$max_solutions);
       msg "in solve after calculate with n=$n; solutions {self.list.join('; ')}" if debug;
@@ -51,18 +51,21 @@ class Board_Solver does Solutions {
     self;
   }
   
-  method calculate_solutions($ncubes,:$max_solutions=50000) {  # ncubes is maximum number of cubes to use
+  method calculate_solutions($ncubes,:$max_solutions=20000) {  # ncubes is maximum number of cubes to use
     msg "calculate_solutions for ncubes=$ncubes" if debug('calc');
     die "Goal must be set before calculating solutions" unless $!B.goal;
     die "Number of cubes in a solution must be odd!" if $ncubes %% 2;
     return self unless $!B.equation_feasible;
     my Bag $num = num_bag($!B.allowed.Bag);
     my Bag $ops = ops_bag($!B.allowed.Bag);
+    msg "allowed num={$num.kxxv.join(',')}, ops={$ops.kxxv.join(',')}" if debug;
     if ($ncubes==1) { self.save(~$!B.goal) if $!B.goal (elem) $num; return self }
     my $nops=min($ops.total,$num.total-1,floor($ncubes/2));
     my $nnum=min($nops+1,$num.total,$ncubes-$nops);
     msg "nops=$nops; nnum=$nnum" if debug;
-    return Nil unless $nops>=1 && $nnum>=2; 
+    return Nil unless $nops>=1 && $nnum>=2;
+    return Nil if num_bag($!B.R.Bag).total > $nnum;
+    return Nil if ops_bag($!B.R.Bag).total > $nops;
     my @pn=get_tuples $nnum, $num, num_bag($!B.R.Bag);
     my @po=get_tuples $nops, $ops, ops_bag($!B.R.Bag);
     my @ops_slots=ops_slots($nops);

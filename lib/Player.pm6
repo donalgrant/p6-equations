@@ -228,6 +228,32 @@ class Player does Solutions {
     self.choose_move($B);  
   }
 
+  sub try_replace(BagHash $excess, BagHash $req, $cube, $alt_cube, $rpn, &goal_fn, :$swap=False) {
+    msg "############try_replace on $rpn for $cube with $alt_cube vs. {$excess.kxxv.join(',')} and req {$req.kxxv.join(',')}" if debug;
+    for 0..Inf -> $nskip {
+      msg "for nskip=$nskip:" if debug;
+      my $rpn_extract=$rpn.rpn_at_op($cube,$nskip);
+      return unless $rpn_extract.defined;
+      my ($arg1,$arg2,$op)=decompose_rpn(rpn_at_op($rpn_extract,$cube,$nskip));
+      msg "for $rpn_extract:   arg1=$arg1, arg2=$arg2, op=$op" if debug;
+      ($arg1,$arg2).=reverse if $swap;
+      msg "after swap ($swap): arg1=$arg1, arg2=$arg2" if debug;
+      msg "divide-by-zero test value:  {abs(&goal_fn('2'))}";
+      return if rpn_value($arg2)==0 and abs(&goal_fn('2')) < 1.0;  # trap divide-by-zero
+      msg "survived divide-by-zero" if debug;
+      my $e=$excess (+) RPN.new($arg2).Bag;
+      my $r=($req (-) RPN.new($arg1).Bag) (-) Bag.new($alt_cube);
+      msg "for this try, req will be {$r.kxxv.join(',')}" if debug;
+      msg "Test '$alt_cube' is in modified excess {$e.kxxv.join(',')} ? {$alt_cube (elem) $e}" if debug;
+      next unless $alt_cube (elem) $e;
+      my $B=Board.new(U=>$e.BagHash,R=>$r.BagHash,G=>(&goal_fn($arg2)).Str).move_to_forbidden($alt_cube);
+      msg "  try to solve board:\n{$B.display}";
+      my $BS=Board_Solver.new($B).solve(min_cubes=>3,max_cubes=>7,max_solutions=>10000);
+      msg "solutions to board are {$BS.list.join('; ')}" if debug;
+      $BS.list.map({ take $arg1~$_~$alt_cube });
+    }
+  }
+  
   sub try_replace_pls(BagHash $excess, $cube, $alt_cube,$rpn, BagHash $req) {
     return unless $alt_cube (elem) $excess;
     my $nskip=0;
@@ -237,10 +263,10 @@ class Player does Solutions {
       my ($arg1,$arg2,$op)=decompose_rpn($rpn.rpn_at_op($cube,$nskip));
       Board_Solver.new(
 	Board.new(U=>$excess,G=>(-rpn_value($arg2)).Str).move_to_forbidden($alt_cube)
-      ).solve.list.map({ my $n=$arg1~$_~$alt_cube; take $n if RPN.new($n).has($req) });
+      ).solve.list.map({ my $n=$arg1~$_~$alt_cube; take $n if RPN.new($n).has($req.Bag) });
       Board_Solver.new(
 	Board.new(U=>$excess,G=>(-rpn_value($arg1)).Str).move_to_forbidden($alt_cube)
-      ).solve.list.map({ my $n=$arg2~$_~$alt_cube; take $n if RPN.new($n).has($req) });
+      ).solve.list.map({ my $n=$arg2~$_~$alt_cube; take $n if RPN.new($n).has($req.Bag) });
       $nskip++;
     }
   }
@@ -253,10 +279,10 @@ class Player does Solutions {
       my ($arg1,$arg2,$op)=decompose_rpn($rpn.rpn_at_op($cube,$nskip));
       Board_Solver.new(
 	Board.new(U=>$excess,G=>(1/rpn_value($arg2)).Str).move_to_forbidden($alt_cube)
-      ).solve.list.map({ my $n=$arg1~$_~$alt_cube; take $n if RPN.new($n).has($req) }) unless rpn_value($arg2)==0;
+      ).solve.list.map({ my $n=$arg1~$_~$alt_cube; take $n if RPN.new($n).has($req.Bag) }) unless rpn_value($arg2)==0;
       Board_Solver.new(
 	Board.new(U=>$excess,G=>(1/rpn_value($arg1)).Str).move_to_forbidden($alt_cube)
-      ).solve.list.map({ my $n=$arg2~$_~$alt_cube; take $n if RPN.new($n).has($req) }) unless rpn_value($arg1)==0;
+      ).solve.list.map({ my $n=$arg2~$_~$alt_cube; take $n if RPN.new($n).has($req.Bag) }) unless rpn_value($arg1)==0;
       $nskip++;
     }
   }
@@ -270,7 +296,7 @@ class Player does Solutions {
       next if rpn_value($arg2)==0;
       Board_Solver.new(
 	Board.new(U=>$excess,G=>(1/rpn_value($arg2)).Str).move_to_forbidden($alt_cube)
-      ).solve.list.map({ my $n=$_~$arg1~$alt_cube; take $n if RPN.new($n).has($req) });
+      ).solve.list.map({ my $n=$_~$arg1~$alt_cube; take $n if RPN.new($n).has($req.Bag) });
       $nskip++;
     }
   }
@@ -279,12 +305,12 @@ class Player does Solutions {
     my $nskip=0;
     loop {
       my $rpn_extract=$rpn.rpn_at_op($cube,$nskip);
-      return unless $rpn_extract.defined;
+      return unless $rpn_extract.defined; 
       my ($arg1,$arg2,$op)=decompose_rpn($rpn.rpn_at_op($cube,$nskip));
       next if rpn_value($arg1)==0;
       Board_Solver.new(
 	Board.new(U=>$excess,G=>(1/rpn_value($arg1)).Str).move_to_forbidden($alt_cube)
-      ).solve.list.map({ my $n=$arg2~$_~$alt_cube; take $n if RPN.new($n).has($req) });
+      ).solve.list.map({ my $n=$arg2~$_~$alt_cube; take $n if RPN.new($n).has($req.Bag) });
       $nskip++;
     }
   }
@@ -309,8 +335,8 @@ class Player does Solutions {
 	  }
 	}
       }
-      when /<[+]>/ { return gather try_replace_pls($excess,'+','-',$rpn,$B.R) }
-      when /<[*]>/ { return gather try_replace_mlt($excess,'*','/',$rpn,$B.R) }
+      when /<[+]>/ { return gather { try_replace($excess,$B.R,'+','-',$rpn,{ -rpn_value($^a)  },swap=>$_) for (False,True) } }
+      when /<[*]>/ { return gather { try_replace($excess,$B.R,'*','/',$rpn,{ 1/rpn_value($^a) },swap=>$_) for (False,True) } }
       when /<[^]>/ { return gather try_replace_exp($excess,'^','@',$rpn,$B.R) }
       when /<[@]>/ { return gather try_replace_rad($excess,'@','^',$rpn,$B.R) }
     }
