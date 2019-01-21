@@ -206,7 +206,7 @@ class Player does Solutions {
 	    $still_doable.save($new_rpn);
 	    once { $not_doable.delete($r) }
 	    self.save($new_rpn);
-	    msg "found replacement:  $r --> $new_rpn" if debug 'replacement';
+	    msg "found replacement:  $r --> $new_rpn:  {rpn($new_rpn).aos}" if debug 'replacement';
 	  }
 	} else {                        # must be a new required which is not part of the RPN
 	  my $extra_req = $BS.req-not-in( $r );
@@ -216,7 +216,7 @@ class Player does Solutions {
 	    $still_doable.save($new_rpn);
 	    once { $not_doable.delete($r) }
 	    self.save($new_rpn);
-	    msg "found expansion:  $r --> $new_rpn" if debug 'expansion';
+	    msg "found expansion:  $r --> $new_rpn:  {rpn($new_rpn).aos}" if debug 'expansion';
 	  }
 	}
       }
@@ -291,13 +291,10 @@ class Player does Solutions {
   }
 
   sub replace_digit(BagHash $excess, $cube, $rpn) {
-    my Board_Solver $BS .= new(Board.new(U=>$excess,G=>$cube));
-    for $BS.solve(min_cubes=>3).rpn_list -> $r {
-      next if $cube ∈ $r.Bag;   # don't replace with the same cube!
-      # create a new RPN by replacing in the original rpn
-      my $new_rpn = $rpn.Str;
-      $new_rpn~~s/$cube/{~$r}/;
-      take $new_rpn;
+    for Board_Solver.new(Board.new(U=>$excess,G=>$cube)).solve(min_cubes=>3).list -> $r {
+      next if $cube ∈ rpn($r).Bag;     # don't replace with the same cube!
+      my $new-rpn=$rpn.Str;            # need a mutable copy
+      take $new-rpn.=subst($cube,$r);  # create a new RPN by replacing in the original rpn
     }
   }
   
