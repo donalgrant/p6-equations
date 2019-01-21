@@ -228,7 +228,7 @@ class Player does Solutions {
     self.choose_move($B);  
   }
 
-  sub try_replace(BagHash $excess, BagHash $req, $cube, $alt_cube, $rpn, &goal_fn, :$swap=False) {
+  sub replace_op(BagHash $excess, BagHash $req, $cube, $alt_cube, $rpn, &goal_fn, :$swap=False) {
     msg "###\n#####\n####try_replace on $rpn for $cube with $alt_cube vs. {$excess.kxxv.join(',')} and req {$req.kxxv.join(',')}" if debug;
     for 0..Inf -> $nskip {
       msg "for nskip=$nskip:" if debug;
@@ -289,6 +289,17 @@ class Player does Solutions {
       $nskip++;
     }
   }
+
+  sub replace_digit(BagHash $excess, $cube, $rpn) {
+    my Board_Solver $BS .= new(Board.new(U=>$excess,G=>$cube));
+    for $BS.solve(min_cubes=>3).rpn_list -> $r {
+      next if $cube ∈ $r.Bag;   # don't replace with the same cube!
+      # create a new RPN by replacing in the original rpn
+      my $new_rpn = $rpn.Str;
+      $new_rpn~~s/$cube/{~$r}/;
+      take $new_rpn;
+    }
+  }
   
   # returns a list of replacement rpn-strings, or empty list if none found
   # maybe make this whole thing a gather / take?
@@ -299,21 +310,11 @@ class Player does Solutions {
     my $excess=($B.allowed ∖ ($rpn.Bag ∖ $missing)).BagHash;
     msg "find a replacement for $cube in $rpn using excess {$excess.kxxv.join(',')}" if debug;
     given $cube {
-      when /<digit>/ {
-	my Board_Solver $BS .= new(Board.new(U=>$excess,G=>$cube));
-	return gather {
-	  for $BS.solve(min_cubes=>3).rpn_list -> $r {
-	    next if $cube ∈ $r.Bag;   # don't replace with the same cube!
-	    # create a new RPN by replacing in the original rpn
-	    my $new_rpn = $rpn.Str;  $new_rpn~~s/$cube/{~$r}/;
-	    take $new_rpn;
-	  }
-	}
-      }
-      when /<[+]>/ { return gather { try_replace($excess,$B.R,'+','-',$rpn,{ -rpn_value($^a)  },swap=>$_) for (False,True) } }
-      when /<[*]>/ { return gather { try_replace($excess,$B.R,'*','/',$rpn,{ 1/rpn_value($^a) },swap=>$_) for (False,True) } }
-      when /<[^]>/ { msg "replacing $cube" if debug; my @g=gather try_replace_exp($excess,'^','@',$rpn,$B.R); msg "gathered {@g.join('; ')}"; return @g; }
-      when /<[@]>/ { msg "replacing $cube" if debug; my @g=gather try_replace_rad($excess,'@','^',$rpn,$B.R); msg "gathered {@g.join('; ')}"; return @g; }
+      when /<digit>/ { return gather replace_digit($excess,$cube,$rpn) }
+      when /<[+]>/   { return gather { replace_op($excess,$B.R,'+','-',$rpn,{ -rpn_value($^a)  },swap=>$_) for (False,True) } }
+      when /<[*]>/   { return gather { replace_op($excess,$B.R,'*','/',$rpn,{ 1/rpn_value($^a) },swap=>$_) for (False,True) } }
+      when /<[^]>/   { msg "replacing $cube" if debug; my @g=gather try_replace_exp($excess,'^','@',$rpn,$B.R); msg "gathered {@g.join('; ')}"; return @g; }
+      when /<[@]>/   { msg "replacing $cube" if debug; my @g=gather try_replace_rad($excess,'@','^',$rpn,$B.R); msg "gathered {@g.join('; ')}"; return @g; }
     }
     return [];
   }
