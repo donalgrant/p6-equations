@@ -97,15 +97,105 @@ sub MAIN(
     ok  $BS.on-board_solution($rpn),   "now it's a solution on the board";
     is  $BS.go-out_check($rpn), '',    "and go-out check passes with empty cube returned";
   }
-  
-  subtest "find_replacement" => {
 
+  subtest "non-integer goals" => {
+    my $B=Board.new(G=>'1/3',U=>BagHash.new('2','6','/'));
+    diag $B.display;
+    my @r=Board_Solver.new($B).solve.list;
+    is-deeply( @r, [ '26/' ], "rational goal" );
+    
+    my $B=Board.new(G=>'1/4',U=>BagHash.new('2','8','/'));
+    diag $B.display;
+    my @r=Board_Solver.new($B).solve.list;
+    is-deeply( @r, [ '28/' ], "rational goal with terminating decimal" );
+  }
+  
+  subtest "find_replacement for digits" => {
+
+    for ^8 -> $digit {
+      my $rpn=rpn($digit~'1+');
+      my $B=Board.new(G=>($digit.Int+1).Str,F=>BagHash.new($digit),U=>BagHash.new('1','2','+','-',($digit+2).Str));
+      my BagHash $missing .= new($digit.Str);
+      my @r = find_replacement($B,$missing,$rpn);
+      if ($digit==2) {
+	is-deeply(@r, [], "Don't replace $digit with 2" );
+      } else {
+	is-deeply(@r,[ ($digit+2).Str~'2-1+' ], "Replace digit $digit" );
+      }
+    }
+
+    with 8 -> $digit {
+      my $rpn=rpn($digit~'1+');
+      my $B=Board.new(G=>($digit.Int+1).Str,F=>BagHash.new($digit),U=>BagHash.new('1','2','4','+','*'));
+      my BagHash $missing .= new($digit.Str);
+      my @r = find_replacement($B,$missing,$rpn);
+      is-deeply(@r.sort,[ '24*1+', '42*1+' ].sort, "Replace digit $digit, symmetric product" );
+    }
+
+    with 9 -> $digit {
+      my $rpn=rpn($digit~'1+');
+      my $B=Board.new(G=>($digit.Int+1).Str,F=>BagHash.new($digit),U=>BagHash.new('1','3','3','+','*'));
+      my BagHash $missing .= new($digit.Str);
+      my @r = find_replacement($B,$missing,$rpn);
+      is-deeply(@r.sort,[ '33*1+' ].sort, "Replace digit $digit, symmetric product, unique" );
+    }
+  }
+
+  subtest "find_replacement for operators" => {
+    
     my $rpn=rpn('21+');
     my $B=Board.new(G=>'3',F=>BagHash.new(qw{ + }),U=>BagHash.new(qw{ 0 1 2 - - }));
     my BagHash $missing .= new(qw{ + });
     my @r = find_replacement($B,$missing,$rpn);
-    diag "find_replacement returns {@r.join('; ')}";
-    ok( @r == qw{ 201-- 102-- }, "Found the correct two replacements" );
+    is-deeply(@r,[qw{ 201-- 102-- }], "Replace +" );
+
+    my $rpn=rpn('24*');
+    my $B=Board.new(G=>'8',F=>BagHash.new(qw{ * }),U=>BagHash.new(qw{ 1 2 4 / / }));
+    my BagHash $missing .= new(qw{ * });
+    my @r = find_replacement($B,$missing,$rpn);
+    is-deeply(@r,[qw{ 214// 412// }], "Replace *" );
+
+    my $rpn=rpn('23*');
+    my $B=Board.new(G=>'6',F=>BagHash.new(qw{ * }),U=>BagHash.new(qw{ 1 2 3 / / }));
+    my BagHash $missing .= new(qw{ * });
+    my @r = find_replacement($B,$missing,$rpn);
+    is-deeply(@r,[qw{ 213// 312// }], "Replace * with rational replace-goal" );
+
+    my $rpn=rpn('23^');
+    my $B=Board.new(G=>'8',F=>BagHash.new(qw{ ^ }),U=>BagHash.new(qw{ 1 2 3 / @ }));
+    my BagHash $missing .= new(qw{ ^ });
+    my @r = find_replacement($B,$missing,$rpn);
+    is-deeply(@r,[qw{ 13/2@ }], "Replace ^ with rational replace-goal" );
+
+    my $rpn=rpn('24^');
+    my $B=Board.new(G=>'16',F=>BagHash.new(qw{ ^ }),U=>BagHash.new(qw{ 1 2 4 / @ }));
+    my BagHash $missing .= new(qw{ ^ });
+    my @r = find_replacement($B,$missing,$rpn);
+    is-deeply(@r,[qw{ 14/2@ }], "Replace ^ with replace-goal" );
+
+    my $rpn=rpn('38@');
+    my $B=Board.new(G=>'2',F=>BagHash.new(qw{ @ }),U=>BagHash.new(qw{ 1 3 8 / ^ }));
+    my BagHash $missing .= new(qw{ @ });
+    my @r = find_replacement($B,$missing,$rpn);
+    is-deeply(@r,[qw{ 813/^ }], "Replace @ with rational replace-goal" );
+
+    my $rpn=rpn('24@');
+    my $B=Board.new(G=>'2',F=>BagHash.new(qw{ @ }),U=>BagHash.new(qw{ 1 2 4 / ^ }));
+    my BagHash $missing .= new(qw{ @ });
+    my @r = find_replacement($B,$missing,$rpn);
+    is-deeply(@r,[qw{ 412/^ }], "Replace @" );
+
+    my $rpn=rpn('30^');
+    my $B=Board.new(G=>'1',F=>BagHash.new(qw{ ^ }),U=>BagHash.new(qw{ 0 1 3 / @ }));
+    my BagHash $missing .= new(qw{ ^ });
+    my @r = find_replacement($B,$missing,$rpn);
+    is-deeply(@r,[], "Replace ^ passes divide-by-zero check" );
+
+    my $rpn=rpn('30*');
+    my $B=Board.new(G=>'0',F=>BagHash.new(qw{ * }),U=>BagHash.new(qw{ 0 1 3 / / }));
+    my BagHash $missing .= new(qw{ * });
+    my @r = find_replacement($B,$missing,$rpn);
+    is-deeply(@r,[ '013//' ], "Replace * passes divide-by-zero check, returns remaining solution" );
   }
   
   done-testing;

@@ -146,10 +146,10 @@ sub find_replacement(Board $B, BagHash $missing, RPN $rpn) is export {
   msg "find a replacement for $cube in $rpn using excess {$excess.kxxv.join(',')}" if debug;
   given $cube {
     when /<digit>/ { return gather replace_digit($excess,$cube,$rpn) }
-    when /<[+]>/   { return gather { replace_op($excess,$B.R,'+','-',$rpn,{ -rpn_value($^a)  },swap=>$_) for (False,True) } }
-    when /<[*]>/   { return gather { replace_op($excess,$B.R,'*','/',$rpn,{ 1/rpn_value($^a) },swap=>$_) for (False,True) } }
-    when /<[^]>/   { return gather { replace_op($excess,$B.R,'^','@',$rpn,{ 1/rpn_value($^a) },exp=>True ) } }
-    when /<[@]>/   { return gather { replace_op($excess,$B.R,'@','^',$rpn,{ 1/rpn_value($^a) },swap=>True) } }
+    when /<[+]>/   { return gather { replace_op($excess,$B.R,'+','-',$rpn,{  '-'~rpn_value($^a)  },swap=>$_) for (False,True) } }
+    when /<[*]>/   { return gather { replace_op($excess,$B.R,'*','/',$rpn,{ '1/'~rpn_value($^a) },swap=>$_) for (False,True) } }
+    when /<[^]>/   { return gather { replace_op($excess,$B.R,'^','@',$rpn,{ '1/'~rpn_value($^a) },exp=>True ) } }
+    when /<[@]>/   { return gather { replace_op($excess,$B.R,'@','^',$rpn,{ '1/'~rpn_value($^a) },swap=>True) } }
   }
   return [];
 }
