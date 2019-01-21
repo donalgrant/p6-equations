@@ -103,65 +103,28 @@ class Board_Solver does Solutions {
 
 # non class functions related to Board Solving
 
-sub replace_op(BagHash $excess, BagHash $req, $cube, $alt_cube, $rpn, &goal_fn, :$swap=False) {
-  msg "###\n#####\n####try_replace on $rpn for $cube with $alt_cube vs. {$excess.kxxv.join(',')} and req {$req.kxxv.join(',')}" if debug;
+# required cubes are for entire new $rpn, which will actually be the cubes in
+#   $rpn - $rpn_extract + $arg1 + $_ from solution + $alt_cube
+#   so the req cubes which need to be in $_ from solution are the ones which are
+#   not in the rest of it, namely, $req (-) ($rpn-$rpn_extract+$arg1+alt_cube)
+
+sub replace_op(BagHash $excess, BagHash $req, $cube, $alt_cube, $rpn, &goal_fn, :$swap=False, :$exp=False) {
+  msg "try_replace on $rpn for $cube with $alt_cube vs. {$excess.kxxv.join(',')} and req {$req.kxxv.join(',')}" if debug;
   for 0..Inf -> $nskip {
-    msg "for nskip=$nskip:" if debug;
     my $rpn_extract=$rpn.rpn_at_op($cube,$nskip);
     last unless $rpn_extract.defined;
     my ($arg1,$arg2,$op)=decompose_rpn(rpn_at_op($rpn_extract,$cube,$nskip));
-    msg "for $rpn_extract:   arg1=$arg1, arg2=$arg2, op=$op" if debug;
     ($arg1,$arg2).=reverse if $swap;
-    msg "after swap ($swap): arg1=$arg1, arg2=$arg2" if debug;
-    msg "divide-by-zero test value:  {abs(&goal_fn('2'))}";
     last if rpn_value($arg2)==0 and abs(&goal_fn('2')) < 1.0;  # trap divide-by-zero
-    msg "survived divide-by-zero" if debug;
     my $e=$excess ⊎ rpn($arg2).Bag;
-    # required cubes are for entire new $rpn, which will actually be the cubes in
-    #   $rpn - $rpn_extract + $arg1 + $_ from solution + $alt_cube
-    #   so the req cubes which need to be in $_ from solution are the ones which are
-    #   not in the rest of it, namely, $req (-) ($rpn-$rpn_extract+$arg1+alt_cube)
-    my $used_cubes=($rpn.Bag ∖ rpn($rpn_extract).Bag) ⊎ rpn($arg1).Bag ⊎ Bag.new($alt_cube);
-    msg "rpn-rpn_extract = {($rpn.Bag ∖ rpn($rpn_extract).Bag).kxxv.join(',')}" if debug;
-    msg "arg1 + alt_cube = {(rpn($arg1.Str).Bag ⊎ Bag.new($alt_cube)).kxxv.join(',')}" if debug;
-    my $r=($req ∖ $used_cubes) // Bag.new;  # make sure $r is defined
-    msg "for this try: reserved={$used_cubes.kxxv.join(',')}, req will be {$r.kxxv.join(',')}" if debug;
-    msg "Test '$alt_cube' is in modified excess {$e.kxxv.join(',')} ? {$alt_cube ∈ $e}" if debug;
     next unless $alt_cube ∈ $e;
-    my $B=Board.new(U=>$e.BagHash,R=>$r.BagHash,G=>(&goal_fn($arg2)).Str).move_to_forbidden($alt_cube);
-    msg "  try to solve board:\n{$B.display}";
-    my $BS=Board_Solver.new($B).solve(min_cubes=>3,max_cubes=>7,max_solutions=>10000);
-    msg "solutions to board are {$BS.list.map({ $rpn.Str.subst($rpn_extract.Str,$arg1~$_~$alt_cube) }).join('; ')}" if debug;
-    for $BS.list { take $rpn.Str.subst($rpn_extract.Str,$arg1~$_~$alt_cube) }
-  }
-}
-
-sub try_replace_exp(BagHash $excess, $cube, $alt_cube,$rpn, BagHash $req) {
-  return unless $alt_cube (elem) $excess;
-  my $nskip=0;
-  loop {
-    my $rpn_extract=$rpn.rpn_at_op($cube,$nskip);
-    return unless $rpn_extract.defined;
-    my ($arg1,$arg2,$op)=decompose_rpn($rpn.rpn_at_op($cube,$nskip));
-    next if rpn_value($arg2)==0;
-    Board_Solver.new(
-      Board.new(U=>$excess,G=>(1/rpn_value($arg2)).Str).move_to_forbidden($alt_cube)
-    ).solve.list.map({ my $n=$_~$arg1~$alt_cube; take $n if rpn($n).has($req.Bag) });
-    $nskip++;
-  }
-}
-sub try_replace_rad(BagHash $excess, $cube, $alt_cube,$rpn, BagHash $req) {
-  return unless $alt_cube ∈ $excess;
-  my $nskip=0;
-  loop {
-    my $rpn_extract=$rpn.rpn_at_op($cube,$nskip);
-    return unless $rpn_extract.defined; 
-    my ($arg1,$arg2,$op)=decompose_rpn($rpn.rpn_at_op($cube,$nskip));
-    next if rpn_value($arg1)==0;
-    Board_Solver.new(
-      Board.new(U=>$excess,G=>(1/rpn_value($arg1)).Str).move_to_forbidden($alt_cube)
-    ).solve.list.map({ my $n=$arg2~$_~$alt_cube; take $n if rpn($n).has($req.Bag) });
-    $nskip++;
+    my $used_cubes=($rpn.Bag ∖ rpn($rpn_extract).Bag) ⊎ rpn($arg1).Bag ⊎ Bag.new($alt_cube);
+    my $r=($req ∖ $used_cubes) // Bag.new;  # make sure $r is defined
+    for Board_Solver.new(Board.new(
+			    U=>$e.BagHash,R=>$r.BagHash,G=>(&goal_fn($arg2)).Str
+			  ).move_to_forbidden($alt_cube)
+			).solve(min_cubes=>3,max_cubes=>7,max_solutions=>10000).list
+    { take $rpn.Str.subst($rpn_extract.Str,($exp ?? $_~$arg1 !! $arg1~$_)~$alt_cube) }
   }
 }
 
@@ -177,7 +140,7 @@ sub replace_digit(BagHash $excess, $cube, $rpn) {
 # maybe make this whole thing a gather / take?
 sub find_replacement(Board $B, BagHash $missing, RPN $rpn) is export {
   return [] unless $B.R ⊆ $rpn.Bag;   # must be able to use all required cubes
-  return [] if $missing.total > 1;       # only replace one cube (for now)
+  return [] if $missing.total > 1;    # only replace one cube (for now)
   my $cube=$missing.pick;
   my $excess=($B.allowed ∖ ($rpn.Bag ∖ $missing)).BagHash;
   msg "find a replacement for $cube in $rpn using excess {$excess.kxxv.join(',')}" if debug;
@@ -185,8 +148,8 @@ sub find_replacement(Board $B, BagHash $missing, RPN $rpn) is export {
     when /<digit>/ { return gather replace_digit($excess,$cube,$rpn) }
     when /<[+]>/   { return gather { replace_op($excess,$B.R,'+','-',$rpn,{ -rpn_value($^a)  },swap=>$_) for (False,True) } }
     when /<[*]>/   { return gather { replace_op($excess,$B.R,'*','/',$rpn,{ 1/rpn_value($^a) },swap=>$_) for (False,True) } }
-    when /<[^]>/   { msg "replacing $cube" if debug; my @g=gather try_replace_exp($excess,'^','@',$rpn,$B.R); msg "gathered {@g.join('; ')}"; return @g; }
-    when /<[@]>/   { msg "replacing $cube" if debug; my @g=gather try_replace_rad($excess,'@','^',$rpn,$B.R); msg "gathered {@g.join('; ')}"; return @g; }
+    when /<[^]>/   { return gather { replace_op($excess,$B.R,'^','@',$rpn,{ 1/rpn_value($^a) },exp=>True ) } }
+    when /<[@]>/   { return gather { replace_op($excess,$B.R,'@','^',$rpn,{ 1/rpn_value($^a) },swap=>True) } }
   }
   return [];
 }
@@ -195,12 +158,11 @@ my %goal-for;
 %goal-for{$_}='1' for qw{ / * ^ @ };
 %goal-for{$_}='0' for qw{ + - };
 
-multi sub expand-list(BagHash $e, $f-cube, $r-cube) { msg "expand-list 3 args with $f-cube and $r-cube" if debug;
-						      Board_Solver.new(Board.new(U=>$e.clone,G=>%goal-for{$f-cube}).move_to_forbidden($f-cube).move_to_required($r-cube)).solve.list
-						    }
-multi sub expand-list(BagHash $e, $f-cube) { msg "expand-list 2 args with $f-cube" if debug;
-					     Board_Solver.new(Board.new(U=>$e.clone,G=>%goal-for{$f-cube}).move_to_forbidden($f-cube)).solve.list
-					   }
+multi sub expand-list(BagHash $e, $f-cube, $r-cube)
+{ Board_Solver.new(Board.new(U=>$e.clone,G=>%goal-for{$f-cube}).move_to_forbidden($f-cube).move_to_required($r-cube)).solve.list }
+
+multi sub expand-list(BagHash $e, $f-cube)
+{ Board_Solver.new(Board.new(U=>$e.clone,G=>%goal-for{$f-cube}).move_to_forbidden($f-cube)).solve.list }
 
 sub find_expansion(Board $B, BagHash $req, BagHash $excess, RPN $rpn) is export {
   return [] unless $req.total==1;  # only handling single newly req cube (for now)
