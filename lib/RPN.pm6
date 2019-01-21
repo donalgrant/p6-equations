@@ -7,7 +7,7 @@ class RPN {
 
   has $.rpn;
 
-  method new ($rpn) { rpn_value($rpn) ?? self.bless(:$rpn) !! Nil }
+  method new ($rpn) { rpn_value($rpn).defined ?? self.bless(:$rpn) !! Nil }
   method new_from_aos ($aos) {
     my $rpn=aos_to_rpn($aos);
     return Nil unless $rpn.defined;
@@ -72,6 +72,7 @@ grammar WF_RPN {
   token rpn_op   { <op>    { $*OP_CNT++  } <?{ $*OP_CNT <= $*DGT_CNT }> }
 }
 
+multi sub rpn(Int $n) is export { RPN.new($n.Str) }  # single digit construction
 multi sub rpn(Str $s) is export { RPN.new($s) }
 multi sub rpn(RPN $r) is export { $r }
 

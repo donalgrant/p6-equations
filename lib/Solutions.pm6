@@ -27,8 +27,8 @@ role Solutions {
 
   method valid_for( $goal ) { self.list.grep({ %.S{$_}==$goal }) }
   
-  method formable( Bag $all, Bag $req=Bag.new ) { self.rpn_list.grep({ ($_.Bag (<=) $all)           and ($_.Bag (>=) $req) }) }
-  method one-away( Bag $all, Bag $req=Bag.new ) { self.rpn_list.grep({ ($_.Bag  (-) $all).total==1  and ($_.Bag (>=) $req) }) }
+  method formable( Bag $all, Bag $req=Bag.new ) { self.rpn_list.grep({ ($_.Bag ⊆ $all)           and ($_.Bag ⊇ $req) }) }
+  method one-away( Bag $all, Bag $req=Bag.new ) { self.rpn_list.grep({ ($_.Bag ∖ $all).total==1  and ($_.Bag ⊇ $req) }) }
 
   method display { [gather { self.rpn_list.map({ take "{$_.aos}={+$_}" }) }].join('; ') }
 }

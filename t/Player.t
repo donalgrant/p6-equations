@@ -21,6 +21,9 @@ use Player;
 use-ok 'Play';
 use Play;
 
+use-ok 'RPN';
+use RPN;
+
 sub MAIN(
   :$nBoards=2,           #= Number of boards to play (default=5)
   :$verbose=False,       #= print extra diagnostic messages (default=False)
@@ -75,6 +78,16 @@ sub MAIN(
 
   }
 
+  subtest "find_replacement" => {
+
+    my $rpn=rpn('21+');
+    my $B=Board.new(G=>'3',F=>BagHash.new(qw{ + }),U=>BagHash.new(qw{ 0 1 2 - - }));
+    my BagHash $missing .= new(qw{ + });
+    my @r = find_replacement($B,$missing,$rpn);
+    diag "find_replacement returns {@r.join('; ')}";
+    ok( @r == qw{ 201-- 102-- }, "Found the correct two replacements" );
+  }
+  
   # play boards
 
   sub do-move(Board $b, Play $p) {

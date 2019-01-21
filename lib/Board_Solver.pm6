@@ -39,7 +39,7 @@ class Board_Solver does Solutions {
     return Nil unless $g.total < 2;
     return '' if $g.total==0;  # should have been caught by a on-board_solution!
     my ($cube)=$g.keys;
-    ( $cube (elem) $!B.U ) ?? $cube !! Nil;
+    ( $cube ∈ $!B.U ) ?? $cube !! Nil;
   }
 
   method solve(:$min_cubes=1,:$max_cubes=5,:$max_solutions=20000,:$quit_on_found=True) {

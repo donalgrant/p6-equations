@@ -222,6 +222,10 @@ sub MAIN(
     isa-ok( rpn('54+'), 'RPN', "rpn sub for an equation" );
     isa-ok( rpn(rpn('54+')), 'RPN', "rpn on an rpn" );
     is-deeply(rpn(rpn('54+')), rpn('54+'), "rpn identity on RPN" );
+    isa-ok( rpn("0"),   'RPN', "create RPN from rpn of string 0" );
+    isa-ok( rpn(0),     'RPN', "create RPN from rpn of int 0" );
+    is( rpn(0).Str, '0', "RPN.Str of 0" );
+    is( rpn(0).Numeric, 0, "RPN.Numeric of 0" );
   }	
 
   subtest "extract RPNs" => {

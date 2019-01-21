@@ -49,7 +49,7 @@ sub msg($txt='[ Undefined text ]', $src?, :$trace) is export {
   my $out=$txt;
   $out ~= "[from $src]" if $src;
   $out ~= debug_caller_subname() if $trace;
-  note $out; 
+  put $out; 
 }  
 
 sub quit($txt='[ Undefined text ]') is export { msg($txt, :trace); die() }
@@ -131,9 +131,9 @@ sub unique_tuples(@a) is export { @a.unique(:as( *.join('') )) }
 # generate the list of tuples of length $n from Bag $src while enforcing use of all in Bag $req
 
 sub get_tuples($n,Bag $src,Bag $req) is export { 
-  return () unless $src (>=) $req;
+  return () unless $src ⊇ $req;
   return () unless $n >= $req.total;   # can't generate tuples w/length less than # of req cubes
-  my $remain=($src (-) $req).BagHash;
+  my $remain=($src ∖ $req).BagHash;
   my @req_list=$req.kxxv;
   # this is tricky -- combinations will return an array of arrays unless there is only a single combination, in which case it's just an array
   # single combination happens in case where number of elements to combine is the same as the number at a time for the combinations
@@ -156,7 +156,7 @@ sub get_tuples($n,Bag $src,Bag $req) is export {
 
 sub choose_n($n,@c) is export {
   die "choose_n range should be 1<=n<={@c.elems}" unless $n>0;
-  return @c if $n>=@c.elems;
+  return @c if $n >= @c.elems;
   for 0..$n-1 { @c[$_,($_+1..@c.end).pick].=reverse }
   @c[0..$n-1];
 }

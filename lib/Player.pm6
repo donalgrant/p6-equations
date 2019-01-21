@@ -140,8 +140,8 @@ class Player does Solutions {
       }
       when ('E') {
 	my $cube=self.manual_select_cube($B);
-	my Bag $must_use= $B.R (+) Bag.new($cube);
-	my Bag $now_avail=$B.P (+) $must_use;
+	my Bag $must_use= $B.R ⊎ Bag.new($cube);
+	my Bag $now_avail=$B.P ⊎ $must_use;
 	my $eq_in = prompt "Enter Equation in either AOS or RPN form; use '?' to escape:  ";
 	my $rpn;
 	if    (valid_rpn($eq_in)) { $rpn=rpn($eq_in) }
@@ -149,9 +149,9 @@ class Player does Solutions {
 	else                      { return self.manual($B) }
 	my $rpn_bag=$rpn.Bag;
 	my $result = +$rpn;  # need to validate RPN here
-	unless ($result==$B.goal)          { say "Your RPN=$result, which is not the goal!";  return self.manual($B) }
-	unless ($rpn_bag (>=) $must_use)   { say "Your RPN does not use all required cubes!"; return self.manual($B) }
-	unless ($now_avail (>=) $rpn_bag)  { say "Not enough cubes to make your RPN!";        return self.manual($B) }
+	unless ($result==$B.goal)       { say "Your RPN=$result, which is not the goal!";  return self.manual($B) }
+	unless ($rpn_bag ⊇ $must_use)   { say "Your RPN does not use all required cubes!"; return self.manual($B) }
+	unless ($now_avail ⊇ $rpn_bag)  { say "Not enough cubes to make your RPN!";        return self.manual($B) }
 	say "You'll win!  Congratulations!";
 	return Play.new(who=>$!name,type=>'Terminal',rpn=>$rpn);
       }
@@ -187,7 +187,7 @@ class Player does Solutions {
 	      my RPN $rep_rpn .=new($new_rpn);
 	      $still_doable.save($rep_rpn) if $BS.doable_solution($rep_rpn);  # make sure -- not sure we need the call to $BS
 	      self.save($rep_rpn);
-	      if (BagHash.new($cube) (<=) $B.U) {
+	      if (BagHash.new($cube) ⊆ $B.U) {
 		return Play.new(who=>$!name,type=>'Move',dest=>'Forbidden',cube=>$cube,rpn=>$rep_rpn,
 				notes=>"I can replace the $cube in $r to get $rep_rpn");
 		self.filter_solutions($B);   # need to figure out how to do this
@@ -241,23 +241,23 @@ class Player does Solutions {
       msg "divide-by-zero test value:  {abs(&goal_fn('2'))}";
       last if rpn_value($arg2)==0 and abs(&goal_fn('2')) < 1.0;  # trap divide-by-zero
       msg "survived divide-by-zero" if debug;
-      my $e=$excess (+) rpn($arg2).Bag;
+      my $e=$excess ⊎ rpn($arg2).Bag;
       # required cubes are for entire new $rpn, which will actually be the cubes in
       #   $rpn - $rpn_extract + $arg1 + $_ from solution + $alt_cube
       #   so the req cubes which need to be in $_ from solution are the ones which are
       #   not in the rest of it, namely, $req (-) ($rpn-$rpn_extract+$arg1+alt_cube)
-      my $used_cubes=($rpn.Bag (-) rpn($rpn_extract).Bag) (+) rpn($arg1).Bag (+) Bag.new($alt_cube);
-      msg "rpn-rpn_extract = {($rpn.Bag (-) rpn($rpn_extract).Bag).kxxv.join(',')}" if debug;
-      msg "arg1 + alt_cube = {(rpn($arg1.Str).Bag (+) Bag.new($alt_cube)).kxxv.join(',')}" if debug;
-      my $r=($req (-) $used_cubes) // Bag.new;  # make sure $r is defined
+      my $used_cubes=($rpn.Bag ∖ rpn($rpn_extract).Bag) ⊎ rpn($arg1).Bag ⊎ Bag.new($alt_cube);
+      msg "rpn-rpn_extract = {($rpn.Bag ∖ rpn($rpn_extract).Bag).kxxv.join(',')}" if debug;
+      msg "arg1 + alt_cube = {(rpn($arg1.Str).Bag ⊎ Bag.new($alt_cube)).kxxv.join(',')}" if debug;
+      my $r=($req ∖ $used_cubes) // Bag.new;  # make sure $r is defined
       msg "for this try: reserved={$used_cubes.kxxv.join(',')}, req will be {$r.kxxv.join(',')}" if debug;
-      msg "Test '$alt_cube' is in modified excess {$e.kxxv.join(',')} ? {$alt_cube (elem) $e}" if debug;
-      next unless $alt_cube (elem) $e;
+      msg "Test '$alt_cube' is in modified excess {$e.kxxv.join(',')} ? {$alt_cube ∈ $e}" if debug;
+      next unless $alt_cube ∈ $e;
       my $B=Board.new(U=>$e.BagHash,R=>$r.BagHash,G=>(&goal_fn($arg2)).Str).move_to_forbidden($alt_cube);
       msg "  try to solve board:\n{$B.display}";
       my $BS=Board_Solver.new($B).solve(min_cubes=>3,max_cubes=>7,max_solutions=>10000);
       msg "solutions to board are {$BS.list.map({ $rpn.Str.subst($rpn_extract.Str,$arg1~$_~$alt_cube) }).join('; ')}" if debug;
-      $BS.list.map({ take $rpn.Str.subst($rpn_extract.Str,$arg1~$_~$alt_cube) });
+      for $BS.list { take $rpn.Str.subst($rpn_extract.Str,$arg1~$_~$alt_cube) }
     }
   }
  
@@ -276,7 +276,7 @@ class Player does Solutions {
     }
   }
   sub try_replace_rad(BagHash $excess, $cube, $alt_cube,$rpn, BagHash $req) {
-    return unless $alt_cube (elem) $excess;
+    return unless $alt_cube ∈ $excess;
     my $nskip=0;
     loop {
       my $rpn_extract=$rpn.rpn_at_op($cube,$nskip);
@@ -292,18 +292,18 @@ class Player does Solutions {
   
   # returns a list of replacement rpn-strings, or empty list if none found
   # maybe make this whole thing a gather / take?
-  sub find_replacement(Board $B, BagHash $missing, RPN $rpn) {
-    return [] unless $B.R (<=) $rpn.Bag;   # must be able to use all required cubes
+  sub find_replacement(Board $B, BagHash $missing, RPN $rpn) is export {
+    return [] unless $B.R ⊆ $rpn.Bag;   # must be able to use all required cubes
     return [] if $missing.total > 1;       # only replace one cube (for now)
     my $cube=$missing.pick;
-    my $excess=($B.allowed (-) ($rpn.Bag (-) $missing)).BagHash;
+    my $excess=($B.allowed ∖ ($rpn.Bag ∖ $missing)).BagHash;
     msg "find a replacement for $cube in $rpn using excess {$excess.kxxv.join(',')}" if debug;
     given $cube {
       when /<digit>/ {
 	my Board_Solver $BS .= new(Board.new(U=>$excess,G=>$cube));
 	return gather {
 	  for $BS.solve(min_cubes=>3).rpn_list -> $r {
-	    next if $cube (elem) $r.Bag;   # don't replace with the same cube!
+	    next if $cube ∈ $r.Bag;   # don't replace with the same cube!
 	    # create a new RPN by replacing in the original rpn
 	    my $new_rpn = $rpn.Str;  $new_rpn~~s/$cube/{~$r}/;
 	    take $new_rpn;
@@ -312,8 +312,8 @@ class Player does Solutions {
       }
       when /<[+]>/ { return gather { try_replace($excess,$B.R,'+','-',$rpn,{ -rpn_value($^a)  },swap=>$_) for (False,True) } }
       when /<[*]>/ { return gather { try_replace($excess,$B.R,'*','/',$rpn,{ 1/rpn_value($^a) },swap=>$_) for (False,True) } }
-      when /<[^]>/ { return gather try_replace_exp($excess,'^','@',$rpn,$B.R) }
-      when /<[@]>/ { return gather try_replace_rad($excess,'@','^',$rpn,$B.R) }
+      when /<[^]>/ { msg "replacing $cube" if debug; my @g=gather try_replace_exp($excess,'^','@',$rpn,$B.R); msg "gathered {@g.join('; ')}"; return @g; }
+      when /<[@]>/ { msg "replacing $cube" if debug; my @g=gather try_replace_rad($excess,'@','^',$rpn,$B.R); msg "gathered {@g.join('; ')}"; return @g; }
     }
     return [];
   }
@@ -333,8 +333,8 @@ class Player does Solutions {
     return [] unless $req.total==1;  # only handling single newly req cube (for now)
     my $cube=$req.pick;
     msg "single cube $cube newly required with excess {$excess.kxxv.join(',')}" if debug;
-    my @m_ops-excess=qw{ / * ^ + - }.grep(* (elem) $excess);  
-    my @s_ops-excess=qw{     @     }.grep(* (elem) $excess);  
+    my @m_ops-excess=qw{ / * ^ + - }.grep(* ∈ $excess);  
+    my @s_ops-excess=qw{     @     }.grep(* ∈ $excess);  
     return gather {
       given $cube {
 	when /<[*/^+-]>/ { expand-list($excess,$cube).map({ take "$rpn$_$cube" }) }
@@ -375,7 +375,7 @@ class Player does Solutions {
     msg "I'm working towards {$target_rpn.aos}" if debug;
     my $pos_options = $BS.cubes-to-go_for($target_rpn);
     my %play=(who=>$!name,type=>'Move',rpn=>$target_rpn);
-    if ($pos_options.total>2) { # can consider a move to req or perm -- won't cause a "go-out" for other player
+    if ($pos_options.total > 2) { # can consider a move to req or perm -- won't cause a "go-out" for other player
       %play<cube>=$pos_options.roll;
       return Play.new(dest=>'Required', |%play) if chance($!force_required);
       return Play.new(dest=>'Permitted',|%play);
@@ -402,7 +402,7 @@ class Player does Solutions {
 
   method target_rpn(Board $B) {
     # should target rpn which uses permitted, since opponent might, all things the same, use a shorter rpn
-    sub target_fn($a) { (($a.Bag (-) $B.R) (-) $B.P).total }
+    sub target_fn($a) { (($a.Bag ∖ $B.R) ∖ $B.P).total }
     sub target_sort($a,$b) { ($a.Str.chars <=> $b.Str.chars) or (&target_fn($a) <=> &target_fn($b)) }
     self.rpn_list.sort( &target_sort ).[0];
   }
@@ -423,10 +423,10 @@ class Player does Solutions {
 	# generate the bag of cubes for this rpn
 	my Bag $rpn_bag.= new($old_rpn.list);
 	# figure out which required is not in the solution
-	my $missing=$B.required.Bag (-) $rpn_bag;
+	my $missing=$B.required.Bag ∖ $rpn_bag;
 	msg "missing item is $missing";
 	# take the available cubes minus those in solution; separate into operators and numbers
-	my $avail=$B.available.Bag (-) $rpn_bag;
+	my $avail=$B.available.Bag ∖ $rpn_bag;
 	msg "available for new board = $avail";
 	my @avail_num = $avail.kxxv.grep(/<digit>/); msg "nums = {@avail_num.join(',')}";
 	my @avail_ops = $avail.kxxv.grep(/ <op>  /); msg "ops  = {@avail_ops.join(',')}";
@@ -434,7 +434,7 @@ class Player does Solutions {
 	for @avail_ops.unique -> $op {
 	  note "try op $op";
 	  #    generate a Board with one required cube and the rest of the available cubes as unused (not including this op)
-	  my Board $NB.=new( ($avail (-) $op.Bag) (+) $missing.Bag);
+	  my Board $NB.=new( ($avail ∖ $op.Bag) ⊎ $missing.Bag);
 	  $NB.move_to_required($_) for $missing.kxxv;
 	  #    set goal to either 0 or 1 depending on operator:
 	  if    ($op ~~ /<[+-]>/)    { $NB.install_goal('0') }
