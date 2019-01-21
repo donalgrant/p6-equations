@@ -77,16 +77,6 @@ sub MAIN(
     is $P.permitted_crazy, 0.5, "Back to default value of permitted_crazy";
 
   }
-
-  subtest "find_replacement" => {
-
-    my $rpn=rpn('21+');
-    my $B=Board.new(G=>'3',F=>BagHash.new(qw{ + }),U=>BagHash.new(qw{ 0 1 2 - - }));
-    my BagHash $missing .= new(qw{ + });
-    my @r = find_replacement($B,$missing,$rpn);
-    diag "find_replacement returns {@r.join('; ')}";
-    ok( @r == qw{ 201-- 102-- }, "Found the correct two replacements" );
-  }
   
   # play boards
 
