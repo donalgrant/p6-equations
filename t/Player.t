@@ -21,6 +21,9 @@ use Player;
 use-ok 'Play';
 use Play;
 
+use-ok 'Board_Solver';
+use Board_Solver;
+
 use-ok 'RPN';
 use RPN;
 
@@ -34,31 +37,17 @@ sub MAIN(
   if ($debug) { set_debug($_) for $debug.split(',') }
 
   subtest "Methods" => {
-    my @methods=qw< new choose_goal manual reset >;  
+    my @methods=qw< new manual reset >;  
     can-ok( Player.new, $_ ) for @methods;
   }
 
   my $P=Player.new;
-  my $B=Board.new(Bag.new(qw{1 2 2 3 -}));
+  my $B=board(Bag.new(qw{1 2 2 3 -}));
 
   isa-ok($P,'Player');
   isa-ok($B,'Board');
 
   diag $B.display if opt('verbose');
-
-  subtest "Choose Goal" => {
-
-    my $g=$P.choose_goal($B);
-
-    is( $g, 1, "Only one goal possible");
-
-    ok( $P.choose_goal(Board.new(Bag.new(qw{ 1 2 3 4 5 6 7 8 9 - + * / ^ @ }))).defined, "Found a goal on a larger board" );
-    is( $P.choose_goal(Board.new(Bag.new(qw{ - * - + / }))),      Nil, "No goal possible: no numbers");
-    is( $P.choose_goal(Board.new(Bag.new(qw{ 1 - + / }))),        Nil, "No goal possible: single digit");
-    is( $P.choose_goal(Board.new(Bag.new(qw{ 1 2 3 * / }))),      Nil, "No goal possible: cannot construct" );
-    is( $P.choose_goal(Board.new(Bag.new(qw{ 1 2 1 2 * / })), 1), Nil, "No goal possible: 1 digit, no singletons" );
-
-  }
 
   my $cube_str='*++------///001111112333356@@@25';
 
@@ -70,7 +59,7 @@ sub MAIN(
     
     $P.permitted_crazy=0.6;   # without changing the other types, this should break
     is $P.permitted_crazy, 0.6, "Able to set permitted_crazy";
-    dies-ok { $P.crazy_move(Board.new(Bag.new($cube_str.comb))) }, "crazy_move fails with inconsistent parameters";
+    dies-ok { $P.crazy_move(board(Bag.new($cube_str.comb))) }, "crazy_move fails with inconsistent parameters";
     
     isa-ok($P.reset, 'Player', "Force reset to defaults");
     is $P.name, 'Parm-Ver-Test', "Name preserved through reset";
@@ -106,8 +95,8 @@ sub MAIN(
       $P.force_required=1.0-0.1*$_;
       $P.extend_solutions=0.1*$_;
       diag $P.display if opt('verbose');
-      $B=Board.new(Bag.new($cube_str.comb));
-      my $g=$P.choose_goal($B);
+      $B=board(Bag.new($cube_str.comb));
+      my $g=board_solver($B).find_goal;
       ok( $g.defined, "Choose a goal" );
       ok( $B.move_to_goal($g), "move to goal" );
       inner:

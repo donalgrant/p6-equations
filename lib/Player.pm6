@@ -60,36 +60,8 @@ class Player does Solutions {
 
   # should make cube_limit a Player parameter; would also like to thread this
   method generate_solutions( Board $B, $cube_limit=13 ) {
-    my Board_Solver $BS .= new($B);
-    loop (my $rpn_length=$BS.min_solution_cubes; $rpn_length <= $BS.max_solution_cubes; $rpn_length+=2) {
-      last if $rpn_length > $cube_limit;
-      $BS.calculate_solutions($rpn_length);
-      last if $BS.found;
-    }
-    msg "No solutions possible" unless $BS.found;
-    for $BS.list -> $rpn { self.save($rpn) }
+    for board_solver($B).solve(max_cubes=>$cube_limit).list { self.save($_) }
     self;
-  }
-  
-  # move to Board_Solver
-  method choose_goal(Board $board, Int $max_digits=2) {
-    my Board $B.= new('');  # Empty Board -- placeholder
-    self.clear;
-    # look for constructibility for each goal option
-    for shuffle($board.goal_options($max_digits)) -> $g {
-      $B=Board.new($board.U.clone);              
-      $B.move_to_goal($g);
-      msg "choose_goal -- trying $g" if debug;
-      my Board_Solver $BS .= new($B);
-      $BS.calculate_solutions($_) for (3,5);
-      self.clear;
-      for $BS.list -> $rpn { self.save($rpn) }
-      last if self.found;
-    }
-    return Nil unless self.found;
-    msg "Chose a goal:  {$B.goal}";
-    msg "Can get this by:  {self.rpn_list.map({ $_.aos }).join('  ')}" if debug;
-    return $B.goal;
   }
 
   method manual_select_cube(Board $B, $p="Cube:  ") {
@@ -287,63 +259,8 @@ class Player does Solutions {
     self.rpn_list.sort( &target_sort ).[0];
   }
 
-    # need to work out bonus move for computer, triggered when forbidden move is available
-    # and number of unused cubes on board modulo number of players is not 1.
-
-      # not sure any of the following is useful -- reassess later -- might be able "build" new solution from missing number / op?
-=begin pod
-      # before we clear out the solutions and start over, can we build on our current solution list?
-      my @old_solutions=$B.solution_list;  # should filter out solutions which no longer have available cubes
-      note "old solutions {@old_solutions.join("  ")}";
-      note "Will that ever work with available {$B.available}?";
-      my @maybe_solutions=filter_solutions_usable(@old_solutions,$B.available.Bag);
-      note "maybe_solutions={@maybe_solutions.join("  ")}";
-      for @maybe_solutions -> $old_rpn {
-	msg "***>looking at this RPN:  $old_rpn";
-	# generate the bag of cubes for this rpn
-	my Bag $rpn_bag.= new($old_rpn.list);
-	# figure out which required is not in the solution
-	my $missing=$B.required.Bag ∖ $rpn_bag;
-	msg "missing item is $missing";
-	# take the available cubes minus those in solution; separate into operators and numbers
-	my $avail=$B.available.Bag ∖ $rpn_bag;
-	msg "available for new board = $avail";
-	my @avail_num = $avail.kxxv.grep(/<digit>/); msg "nums = {@avail_num.join(',')}";
-	my @avail_ops = $avail.kxxv.grep(/ <op>  /); msg "ops  = {@avail_ops.join(',')}";
-	# step through operators
-	for @avail_ops.unique -> $op {
-	  note "try op $op";
-	  #    generate a Board with one required cube and the rest of the available cubes as unused (not including this op)
-	  my Board $NB.=new( ($avail ∖ $op.Bag) ⊎ $missing.Bag);
-	  $NB.move_to_required($_) for $missing.kxxv;
-	  #    set goal to either 0 or 1 depending on operator:
-	  if    ($op ~~ /<[+-]>/)    { $NB.install_goal('0') }
-	  #      +-   => goal=0
-	  elsif ($op ~~ m{<[*/^@]>}) { $NB.install_goal('1') }
-	  #      */^@ => goal=1
-	  #    calculate goals for (1,3,5,7) cubes
-	  msg "Temp Board now set up:\n{$NB.display}";
-	  my @i_solutions;
-	  for 1,3,5 {
-	    $NB.calculate_solutions($_);
-	    @i_solutions=$NB.solution_list;
-	    last if @i_solutions > 0;
-	  }
-	  msg "Temp Board solutions {$NB.solution_list.join("  ")}";
-	  # append new solutions to old ones
-	  if (@i_solutions > 0) {
-	    $B.clear_solutions;
-	    for @i_solutions -> $new_solution {
-	      my $rpn=($op eq '@') ?? rpn("$new_solution$old_rpn$op") !! rpn("$old_rpn$new_solution$op");
-	      msg "FOUND ONE!!!  saving new solution:  $rpn";
-	      $B.save_solution($rpn);
-	    }
-	    msg "And now redo the turn with new solution list";
-	    self.computed($B,$max_cubes);
-	  }
-	}
-      }
-=end pod
+  # need to work out bonus move for computer, triggered when forbidden move is available
+  # and number of unused cubes on board modulo number of players is not 1.
 
 }  # end class Player
 

@@ -43,7 +43,11 @@ class Board_Solver does Solutions {
   }
 
   method solve(:$min_cubes=1,:$max_cubes=5,:$max_solutions=20000,:$quit_on_found=True) {
-    for $min_cubes, {$_+2}...$max_cubes -> $n {
+    my $start_cubes=max($min_cubes,self.min_solution_cubes);
+    my $end_cubes=min($max_cubes,self.max_solution_cubes);
+    return self if $end_cubes < $start_cubes;
+    msg "solve from $start_cubes to $end_cubes" if debug;
+    for $start_cubes, {$_+2}...$end_cubes -> $n {
       self.calculate_solutions($n,:$max_solutions);
       msg "in solve after calculate with n=$n; solutions {self.list.join('; ')}" if debug;
       return self if $quit_on_found and self.found;
@@ -99,10 +103,22 @@ class Board_Solver does Solutions {
     }
     self;
   }
+
+  method find_goal(Int :$max_digits=2) { find_goal($!B, :$max_digits) }
 }
 
 # non class functions related to Board Solving
 
+sub board_solver(Board $B) is export { return Board_Solver.new($B) }
+
+sub find_goal(Board $B, Int :$max_digits=2) is export {
+  for shuffle($B.goal_options($max_digits)) -> $g {
+    msg "find_goal -- trying $g" if debug;
+    return $g if board_solver(board($B.U.clone).move_to_goal($g)).solve.found;
+  }
+  return Nil;
+}
+  
 # required cubes are for entire new $rpn, which will actually be the cubes in
 #   $rpn - $rpn_extract + $arg1 + $_ from solution + $alt_cube
 #   so the req cubes which need to be in $_ from solution are the ones which are
@@ -120,7 +136,7 @@ sub replace_op(BagHash $excess, BagHash $req, $cube, $alt_cube, $rpn, &goal_fn, 
     next unless $alt_cube ∈ $e;
     my $used_cubes=($rpn.Bag ∖ rpn($rpn_extract).Bag) ⊎ rpn($arg1).Bag ⊎ Bag.new($alt_cube);
     my $r=($req ∖ $used_cubes) // Bag.new;  # make sure $r is defined
-    for Board_Solver.new(Board.new(
+    for board_solver(Board.new(
 			    U=>$e.BagHash,R=>$r.BagHash,G=>(&goal_fn($arg2)).Str
 			  ).move_to_forbidden($alt_cube)
 			).solve(min_cubes=>3,max_cubes=>7,max_solutions=>10000).list
@@ -129,7 +145,7 @@ sub replace_op(BagHash $excess, BagHash $req, $cube, $alt_cube, $rpn, &goal_fn, 
 }
 
 sub replace_digit(BagHash $excess, $cube, $rpn) {
-  for Board_Solver.new(Board.new(U=>$excess,G=>$cube)).solve(min_cubes=>3).list -> $r {
+  for board_solver(Board.new(U=>$excess,G=>$cube)).solve(min_cubes=>3).list -> $r {
     next if $cube ∈ rpn($r).Bag;     # don't replace with the same cube!
     my $new-rpn=$rpn.Str;            # need a mutable copy
     take $new-rpn.=subst($cube,$r);  # create a new RPN by replacing in the original rpn
@@ -159,10 +175,10 @@ my %goal-for;
 %goal-for{$_}='0' for qw{ + - };
 
 multi sub expand-list(BagHash $e, $f-cube, $r-cube)
-{ Board_Solver.new(Board.new(U=>$e.clone,G=>%goal-for{$f-cube}).move_to_forbidden($f-cube).move_to_required($r-cube)).solve.list }
+{ board_solver(Board.new(U=>$e.clone,G=>%goal-for{$f-cube}).move_to_forbidden($f-cube).move_to_required($r-cube)).solve.list }
 
 multi sub expand-list(BagHash $e, $f-cube)
-{ Board_Solver.new(Board.new(U=>$e.clone,G=>%goal-for{$f-cube}).move_to_forbidden($f-cube)).solve.list }
+{ board_solver(Board.new(U=>$e.clone,G=>%goal-for{$f-cube}).move_to_forbidden($f-cube)).solve.list }
 
 sub find_expansion(Board $B, BagHash $req, BagHash $excess, RPN $rpn) is export {
   return [] unless $req.total==1;  # only handling single newly req cube (for now)

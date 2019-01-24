@@ -100,6 +100,14 @@ class Board {
 
 }  # end of class declaration
 
+# non-member subs related to Board
+
+multi sub board( BagHash $U  ) is export { Board.new( :$U                               ) }
+multi sub board( Bag $B      ) is export { Board.new( U=>$B.BagHash                     ) }
+multi sub board( Seq $cubes  ) is export { Board.new( U=>BagHash.new($[$cubes])         ) }
+multi sub board( Str $cubes  ) is export { Board.new( U=>BagHash.new($cubes.comb(/\S/)) ) }
+multi sub board( List $cubes ) is export { Board.new( $cubes.join('')                   ) }
+
 =begin pod
 
 =head1 NAME

@@ -52,6 +52,16 @@ sub MAIN(
     isa-ok(Board.new(Bag.new($cube_list).kxxv),  'Board', "Board from Seq");
     isa-ok(Board.new(BagHash.new($cube_list)),   'Board', "Board from BagHash");
   }
+
+  subtest "Construction using board" => {
+    isa-ok(board($cube_list.join('')),       'Board', "Board from String");
+    isa-ok(board($cube_list.join(' ')),      'Board', "Board with spaces");   # ignore spaces
+    isa-ok(board([$cube_list]),              'Board', "Board from Array");
+    isa-ok(board($cube_list),                'Board', "Board from List");
+    isa-ok(board(Bag.new($cube_list)),       'Board', "Board from Bag");
+    isa-ok(board(Bag.new($cube_list).kxxv),  'Board', "Board from Seq");
+    isa-ok(board(BagHash.new($cube_list)),   'Board', "Board from BagHash");
+  }
   
   $B = Board.new($cube_list.join(' '));
   

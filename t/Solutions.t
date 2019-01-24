@@ -55,7 +55,7 @@ sub MAIN(
     isa-ok( $S.save( %( RPN.new('55*') => 1, RPN.new('333**') => 0, RPN.new('1234+++') => 11 ) ), 'Solutions', "save RPN hash (hash vals discarded)" );
     isa-ok( $S.save( @( RPN.new('78^'),      RPN.new('88^'),        RPN.new('93-2+')) ),          'Solutions', "save RPN array" );
 
-    $tally=21;
+    $tally=22;
     ok( $S.found, "We have some solutions" );
     is( $S.elems, $tally, "We've added 21 unique solution values" );
   
@@ -68,7 +68,7 @@ sub MAIN(
   
   subtest "Solution evalution" => {
     my $v=$S.values.map( *.floor ).Set;  # can get numerical error...
-    my $e=(6,17,2,2,4,3,3,7,6,24,4,25,10,16,16777216,27,20,1,8,5764801).Set;
+    my $e=(0,6,17,2,2,4,3,3,7,6,24,4,25,10,16,16777216,27,20,1,8,5764801).Set;
   
     ok( $v == $e, "Solution values" );
   
@@ -78,7 +78,7 @@ sub MAIN(
     is( $S.formable( Bag.new(qw{ 1 3 3 3 4 / * 7 8 8 ^ }), Bag.new(qw{ 3 3 / }) ).sort,
         ( '33/', '333/*' ).sort,                                                "formable solutions with 3 3 required" );
     is( $S.one-away( Bag.new(qw{ 3 3 3 / }) ).sort,
-        ( '1', '31/', '333/*' ).sort,                                           "one-away solutions" );
+        ( '0', '1', '31/', '333/*' ).sort,                                           "one-away solutions" );
     is( $S.one-away( Bag.new(qw{ 3 3 3 / }), Bag.new(qw{ 1 }) ).sort,
         ( '1', '31/' ).sort,                                                    "one-away solutions with 1 required" );
   
