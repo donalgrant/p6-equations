@@ -57,7 +57,7 @@ class Board_Solver does Solutions {
   
   method calculate_solutions($ncubes,:$max_solutions=20000) {  # ncubes is maximum number of cubes to use
     msg "calculate_solutions for ncubes=$ncubes" if debug('calc');
-    die "Goal must be set before calculating solutions" unless $!B.goal;
+    die "Goal must be set before calculating solutions" unless $!B.goal.chars;
     die "Number of cubes in a solution must be odd!" if $ncubes %% 2;
     return self unless $!B.equation_feasible;
     my Bag $num = num_bag($!B.allowed.Bag);
