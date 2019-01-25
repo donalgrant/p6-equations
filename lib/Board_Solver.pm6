@@ -153,13 +153,14 @@ sub replace_digit(BagHash $excess, $cube, $rpn) {
 }
 
 my %Replacement_Cache;
-sub replacement_hash($r,$c,$BH) { $r.Str~':'~$c~':'~$BH }
+sub replacement_hash($RB,$c,$BH) { $RB~':'~$c~':'~$BH }
 
 sub find_replacement(Board $B, BagHash $missing, RPN $rpn) is export {
-  return [] unless $B.R ⊆ $rpn.Bag;   # must be able to use all required cubes
+  my $rb=$rpn.Bag;
+  return [] unless $B.R ⊆ $rb;   # must be able to use all required cubes
   return [] if $missing.total > 1;    # only replace one cube (for now)
   my $cube=$missing.pick;
-  my $excess=($B.allowed ∖ ($rpn.Bag ∖ $missing)).BagHash;
+  my $excess=($B.allowed ∖ ($rb ∖ $missing)).BagHash;
   my $h=replacement_hash($rpn,$cube,$excess);
   my @R;
   if (not %Replacement_Cache{$h}.defined) {
@@ -188,7 +189,7 @@ multi sub expand-list(BagHash $e, $f-cube)
 { board_solver(Board.new(U=>$e.clone,G=>%goal-for{$f-cube}).move_to_forbidden($f-cube)).solve.list }
 
 my %Expansion_Cache;
-sub expansion_hash($r,$c,$BH) { $r.Str~':'~$c~':'~$BH }
+sub expansion_hash($RB,$c,$BH) { $RB~':'~$c~':'~$BH }
 
 sub find_expansion(Board $B, BagHash $req, BagHash $excess, RPN $rpn) is export {
   return [] unless $req.total==1;  # only handling single newly req cube (for now)
