@@ -152,22 +152,29 @@ sub replace_digit(BagHash $excess, $cube, $rpn) {
   }
 }
 
-# returns a list of replacement rpn-strings, or empty list if none found
-# maybe make this whole thing a gather / take?
+my %Replacement_Cache;
+sub replacement_hash($r,$c,$BH) { $r.Str~':'~$c~':'~$BH }
+
 sub find_replacement(Board $B, BagHash $missing, RPN $rpn) is export {
   return [] unless $B.R ⊆ $rpn.Bag;   # must be able to use all required cubes
   return [] if $missing.total > 1;    # only replace one cube (for now)
   my $cube=$missing.pick;
   my $excess=($B.allowed ∖ ($rpn.Bag ∖ $missing)).BagHash;
-  msg "find a replacement for $cube in $rpn using excess {$excess.kxxv.join(',')}" if debug;
-  given $cube {
-    when /<digit>/ { return gather replace_digit($excess,$cube,$rpn) }
-    when /<[+]>/   { return gather { replace_op($excess,$B.R,'+','-',$rpn,{  '-'~rpn_value($^a)  },swap=>$_) for (False,True) } }
-    when /<[*]>/   { return gather { replace_op($excess,$B.R,'*','/',$rpn,{ '1/'~rpn_value($^a) },swap=>$_) for (False,True) } }
-    when /<[^]>/   { return gather { replace_op($excess,$B.R,'^','@',$rpn,{ '1/'~rpn_value($^a) },exp=>True ) } }
-    when /<[@]>/   { return gather { replace_op($excess,$B.R,'@','^',$rpn,{ '1/'~rpn_value($^a) },swap=>True) } }
-  }
-  return [];
+  my $h=replacement_hash($rpn,$cube,$excess);
+  my @R;
+  if (not %Replacement_Cache{$h}.defined) {
+    msg "find a replacement for $cube in $rpn using excess {$excess.kxxv.join(',')}" if debug;
+    given $cube {
+      when /<digit>/ { @R = gather replace_digit($excess,$cube,$rpn) }
+      when /<[+]>/   { @R = gather { replace_op($excess,$B.R,'+','-',$rpn,{  '-'~rpn_value($^a)  },swap=>$_) for (False,True) } }
+      when /<[*]>/   { @R = gather { replace_op($excess,$B.R,'*','/',$rpn,{ '1/'~rpn_value($^a) },swap=>$_) for (False,True) } }
+      when /<[^]>/   { @R = gather { replace_op($excess,$B.R,'^','@',$rpn,{ '1/'~rpn_value($^a) },exp=>True ) } }
+      when /<[@]>/   { @R = gather { replace_op($excess,$B.R,'@','^',$rpn,{ '1/'~rpn_value($^a) },swap=>True) } }
+      when /<[-/]>/  { @R = [] }
+    }
+    %Replacement_Cache{$h}=@R;
+  } else { msg "will use cached replacement {%Replacement_Cache{$h}.flat.join('; ')}" if debug }
+  return %Replacement_Cache{$h}.flat;
 }
 
 my %goal-for;
@@ -180,20 +187,28 @@ multi sub expand-list(BagHash $e, $f-cube, $r-cube)
 multi sub expand-list(BagHash $e, $f-cube)
 { board_solver(Board.new(U=>$e.clone,G=>%goal-for{$f-cube}).move_to_forbidden($f-cube)).solve.list }
 
+my %Expansion_Cache;
+sub expansion_hash($r,$c,$BH) { $r.Str~':'~$c~':'~$BH }
+
 sub find_expansion(Board $B, BagHash $req, BagHash $excess, RPN $rpn) is export {
   return [] unless $req.total==1;  # only handling single newly req cube (for now)
   my $cube=$req.pick;
   msg "single cube $cube newly required with excess {$excess.kxxv.join(',')}" if debug;
-  my @m_ops-excess=qw{ / * ^ + - }.grep(* ∈ $excess);  
-  my @s_ops-excess=qw{     @     }.grep(* ∈ $excess);  
-  return gather {
-    given $cube {
-      when /<[*/^+-]>/ { expand-list($excess,$cube).map({ take "$rpn$_$cube" }) }
-      when /  <[@]>  / { expand-list($excess,$cube).map({ take "$_$rpn$cube" }) }
-      when / <digit> / { 
-	for @s_ops-excess -> $op { expand-list($excess,$op,$cube).map({ take "$_$rpn$op" }) }
-	for @m_ops-excess -> $op { expand-list($excess,$op,$cube).map({ take "$rpn$_$op" }) }
+  my $h=expansion_hash($rpn,$cube,$excess);
+  if (not %Expansion_Cache{$h}.defined) {
+    my @m_ops-excess=qw{ / * ^ + - }.grep(* ∈ $excess);  
+    my @s_ops-excess=qw{     @     }.grep(* ∈ $excess);
+    my @R = gather {
+      given $cube {
+	when /<[*/^+-]>/ { expand-list($excess,$cube).map({ take "$rpn$_$cube" }) }
+	when /  <[@]>  / { expand-list($excess,$cube).map({ take "$_$rpn$cube" }) }
+	when / <digit> / { 
+	  for @s_ops-excess -> $op { expand-list($excess,$op,$cube).map({ take "$_$rpn$op" }) }
+	  for @m_ops-excess -> $op { expand-list($excess,$op,$cube).map({ take "$rpn$_$op" }) }
+	}
       }
     }
-  }
+    %Expansion_Cache{$h}=@R;
+  } else { msg "will use cached expansion {%Expansion_Cache{$h}.flat.join('; ')}" if debug }
+  return %Expansion_Cache{$h}.flat;
 }
