@@ -132,11 +132,12 @@ class Player does Solutions {
 
   method turn( Board $B ) {
 
+    self.filter_solutions($B); 
     self.generate_solutions($B) unless (self.found);
     
     unless ($B.equation_feasible and self.found) {
       msg "***I challenge -- I see no solution";
-      return Play.new(who=>$!name,type=>'Terminal');
+      return Play.new(who=>$!name,type=>'Terminal',notes=>'no solution possible');
     }
     
     my Board_Solver $BS .= new($B);
@@ -206,7 +207,7 @@ class Player does Solutions {
     return self.crazy_move($B) if chance($!crazy_moves) and $B.U.elems > 1;    # non-thinking move -- has to be more than one cube left
 
     # this shouldn't actually happen here
-    unless (self.found) { return Play.new(who=>$!name,type=>'Terminal',note=>"Challenge the bluff -- no solution")  }
+    unless (self.found) { return Play.new(who=>$!name,type=>'Terminal',notes=>"no solution, but this shouldn't happen")  }
 
     my Board_Solver $BS .= new($B);
 

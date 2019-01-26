@@ -76,7 +76,9 @@ sub MAIN(
     ok $B.forbidden == qw< >,   "initial forbidden";
   
     ok $B.available == $B.unused, "initial available";
-  
+
+    nok $B.goal.defined, "initially, goal is not defined";
+    
     is $B.goal_options.sort(+*), [ 1,3,12,13,21,22,23,31,32,
   				 122,123,132,212,213,221,
   				 223,231,232,312,321,322 ].sort(+*), "initial goals";
@@ -106,8 +108,12 @@ sub MAIN(
     $B.move_to_required($_)  for qw{ 8 - - ^ * 2 5 };
   
     lives-ok({ put $B.display },"Display a larger board");
-  
+
+    nok $B.goal.defined, "Goal not defined prior to being set";
+    
     $B.move_to_goal("20");
+    ok $B.goal.defined, "Goal defined after being set";
+    
     is( $B.goal, 20, "Goal is set for this board" );
   }
 

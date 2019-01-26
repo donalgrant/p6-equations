@@ -42,11 +42,11 @@ class Board_Solver does Solutions {
     ( $cube ∈ $!B.U ) ?? $cube !! Nil;
   }
 
-  method solve(:$min_cubes=1,:$max_cubes=5,:$max_solutions=20000,:$quit_on_found=True) {
+  method solve(:$min_cubes=1,:$max_cubes=7,:$max_solutions=20000,:$quit_on_found=True) {
     my $start_cubes=max($min_cubes,self.min_solution_cubes);
     my $end_cubes=min($max_cubes,self.max_solution_cubes);
     return self if $end_cubes < $start_cubes;
-    msg "solve from $start_cubes to $end_cubes" if debug;
+    msg "solve for goal {$!B.goal} from $start_cubes to $end_cubes" if debug;
     for $start_cubes, {$_+2}...$end_cubes -> $n {
       self.calculate_solutions($n,:$max_solutions);
       msg "in solve after calculate with n=$n; solutions {self.list.join('; ')}" if debug;
@@ -55,11 +55,12 @@ class Board_Solver does Solutions {
     self;
   }
   
-  method calculate_solutions($ncubes,:$max_solutions=20000) {  # ncubes is maximum number of cubes to use
+  method calculate_solutions($ncubes,:$max_solutions=50000) {  # ncubes is maximum number of cubes to use
     msg "calculate_solutions for ncubes=$ncubes" if debug('calc');
-    die "Goal must be set before calculating solutions" unless $!B.goal.chars;
+    die "Goal must be set before calculating solutions" unless $!B.goal.defined;
     die "Number of cubes in a solution must be odd!" if $ncubes %% 2;
     return self unless $!B.equation_feasible;
+    msg "allowed={$!B.allowed.Bag.kxxv.join(',')}" if debug;
     my Bag $num = num_bag($!B.allowed.Bag);
     my Bag $ops = ops_bag($!B.allowed.Bag);
     msg "allowed num={$num.kxxv.join(',')}, ops={$ops.kxxv.join(',')}" if debug;
@@ -77,7 +78,7 @@ class Board_Solver does Solutions {
     msg "po=[{@po.map({ $_.join(',') }).join('],[')}]" if debug;
     msg "ops_slots={@ops_slots.join(',')}" if debug;
     my $n_solutions= @pn * @po * @ops_slots;    # numeric context -- product of array sizes
-    msg "n_solutions=$n_solutions" if debug;
+    msg "n_solutions=$n_solutions" if debug 'nsolutions';
     die "issue with get_tuples? pn={@pn}, po={@po}; ops_slots={@ops_slots}" unless $n_solutions>0;
     if ($n_solutions>$max_solutions) {
       my $reduce_factor=min( 4.0, ($n_solutions/$max_solutions)**(1.0/3.0) ); 
@@ -129,6 +130,7 @@ sub replace_op(BagHash $excess, BagHash $req, $cube, $alt_cube, $rpn, &goal_fn, 
   for 0..Inf -> $nskip {
     my $rpn_extract=$rpn.rpn_at_op($cube,$nskip);
     last unless $rpn_extract.defined;
+    msg "rpn=$rpn; nskip=$nskip; rpn_extract=$rpn_extract" if debug;
     my ($arg1,$arg2,$op)=decompose_rpn(rpn_at_op($rpn_extract,$cube,$nskip));
     ($arg1,$arg2).=reverse if $swap;
     last if rpn_value($arg2)==0 and abs(&goal_fn('2')) < 1.0;  # trap divide-by-zero
@@ -167,7 +169,7 @@ sub find_replacement(Board $B, BagHash $missing, RPN $rpn) is export {
     msg "find a replacement for $cube in $rpn using excess {$excess.kxxv.join(',')}" if debug;
     given $cube {
       when /<digit>/ { @R = gather replace_digit($excess,$cube,$rpn) }
-      when /<[+]>/   { @R = gather { replace_op($excess,$B.R,'+','-',$rpn,{  '-'~rpn_value($^a)  },swap=>$_) for (False,True) } }
+      when /<[+]>/   { @R = gather { replace_op($excess,$B.R,'+','-',$rpn,{  '-'~rpn_value($^a) },swap=>$_) for (False,True) } }
       when /<[*]>/   { @R = gather { replace_op($excess,$B.R,'*','/',$rpn,{ '1/'~rpn_value($^a) },swap=>$_) for (False,True) } }
       when /<[^]>/   { @R = gather { replace_op($excess,$B.R,'^','@',$rpn,{ '1/'~rpn_value($^a) },exp=>True ) } }
       when /<[@]>/   { @R = gather { replace_op($excess,$B.R,'@','^',$rpn,{ '1/'~rpn_value($^a) },swap=>True) } }

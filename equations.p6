@@ -31,16 +31,18 @@ sub do-move(Board $b, Play $p) {
 }
 
 sub MAIN(
-  :$verbose=False,       #= print extra diagnostic messages (default=False)
-  :$debug,               #= comma separated list of debug labels (or 'all') (default none)
+	 :$verbose=False,  #= print extra diagnostic messages (default=False)
+	 Int :$seed,       #= specify random number seed
+	 :$debug,          #= comma separated list of debug labels (or 'all') (default none)
 ) {
 
   set_opt('verbose') if $verbose;
   if ($debug) { set_debug($_) for $debug.split(',') }
+  if ($seed.defined) { srand($seed) }
 
   my $P1=Player.new(name=>'Computer 1');
   my $P2=Player.new(name=>'Computer 2',
-		    crazy_moves=>0.5, required_crazy=>0.5, forbidden_crazy=>0.5, permitted_crazy=>0.0);
+		    crazy_moves=>0.2, required_crazy=>0.5, forbidden_crazy=>0.5, permitted_crazy=>0.0);
 
   my @c=[1..12].map({   Red_Cube.new });
   my @d= [1..8].map({  Blue_Cube.new });
@@ -58,7 +60,7 @@ sub MAIN(
     my $g=board_solver($B).find_goal;
     $B.move_to_goal($g) if $g.defined;
   } until $B.goal.defined;
-  
+
   msg "Starting Board:\n{$B.display}";
 
   # Play the game

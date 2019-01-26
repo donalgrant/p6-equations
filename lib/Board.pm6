@@ -32,9 +32,9 @@ class Board {
   method forbidden { $!F.kxxv }
   method unused    { $!U.kxxv }
 
-  method goal      { $!G // Nil }
+  method goal      { $!G.chars > 0 ?? $!G !! Nil }
 
-  method allowed   { $!R (+) $!P (+) $!U }
+  method allowed   { $!R ⊎ $!P ⊎ $!U }
   method available { self.allowed.kxxv }
   
   method display {
@@ -45,7 +45,7 @@ class Board {
       Required:   { self.required.sort(&board_sort)  } ({$!R.total} cubes)
       Permitted:  { self.permitted.sort(&board_sort) } ({$!P.total} cubes)
       Forbidden:  { self.forbidden.sort(&board_sort) } ({$!F.total} cubes)
-      Goal:       { self.goal }
+      Goal:       { $!G } { self.goal.defined ?? '' !! '(not yet set)' }
       $div
     END
     return $out;

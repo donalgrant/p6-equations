@@ -76,7 +76,7 @@ multi sub rpn(Int $n) is export { RPN.new($n.Str) }  # single digit construction
 multi sub rpn(Str $s) is export { RPN.new($s) }
 multi sub rpn(RPN $r) is export { $r }
 
-sub filter_bag(Bag $b, &filter) { Bag.new( $b.kxxv.grep({ &filter }) ) }
+sub filter_bag(Bag $b, &filter) { my @b=$b.kxxv; bag( @b.grep({ &filter }) ) }
   
 sub ops_bag(Bag $b) is export { filter_bag($b, &op    ) }
 sub num_bag(Bag $b) is export { filter_bag($b, &digit ) } 
