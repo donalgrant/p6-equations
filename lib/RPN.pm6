@@ -81,10 +81,29 @@ sub filter_bag(Bag $b, &filter) { my @b=$b.kxxv; bag( @b.grep({ &filter }) ) }
 sub ops_bag(Bag $b) is export { filter_bag($b, &op    ) }
 sub num_bag(Bag $b) is export { filter_bag($b, &digit ) } 
 
-sub rpn_value ($rpn) is export { 
+sub rpn_value_nc2($rpn) { 
   return Nil unless $rpn.defined;
   return %RPN_CACHE{$rpn} if %RPN_CACHE{$rpn}.defined;
   return %RPN_CACHE{$rpn}= +$rpn if $rpn.chars==1;
+  rpn_value_2($rpn); 
+}
+
+sub rpn_value_nc1($rpn) { 
+  return Nil unless $rpn.defined;
+  return %RPN_CACHE{$rpn} if %RPN_CACHE{$rpn}.defined;
+  return %RPN_CACHE{$rpn}= +$rpn if $rpn.chars==1;
+  rpn_value_1($rpn); 
+}
+
+sub rpn_value-new($rpn where valid_rpn($rpn)) is export { rpn_value_nc2($rpn) }
+sub rpn_value($rpn where valid_rpn($rpn))     is export { rpn_value_nc1($rpn) }
+
+sub rpn_value_2($rpn) { 
+  my ($r1,$r2,$op)=decompose_rpn_nc($rpn);
+  calc(rpn_value_nc2($r1),$op,rpn_value_nc2($r2));
+}
+  
+sub rpn_value_1($rpn) { # $rpn guaranteed to be more than 1 char
   my @list=$rpn.comb;
   return 0 unless (+@list);
   my @stack;
@@ -101,10 +120,11 @@ sub rpn_value ($rpn) is export {
   }
   return %RPN_CACHE{$rpn}=shift @stack;
 }
-  
+
 # in Perl5 profiling, this was faster than using given/when or $opssubs{$op}->($n1,$n2)
 
 sub calc ($n1,$op,$n2) is export {
+  return Nil unless ($n1.defined and $n2.defined);
   return $n1+$n2                                                          if $op eq '+';
   return $n1-$n2                                                          if $op eq '-';
   return $n1*$n2                                                          if $op eq '*';
@@ -245,13 +265,16 @@ sub rpn_at_op(Str $rpn where valid_rpn($rpn), Str $op where $op~~/<op>/, Int $ns
 }
 
 # divide RPN into first RPN argument, second RPN argument, and operator
-sub decompose_rpn(Str $rpn where (valid_rpn($rpn) and $rpn.chars > 1)) is export {
+
+# divide RPN into first RPN argument, second RPN argument, and operator
+sub decompose_rpn_nc(Str $rpn) {
   my $op=$rpn.substr(*-1);
   my $arg2=rpn_at_index($rpn,$rpn.chars-2);
   my $arg1=$rpn.substr(0,$rpn.chars-$op.chars-$arg2.chars);
   return [$arg1,$arg2,$op];
 }
 
+sub decompose_rpn(Str $rpn where (valid_rpn($rpn) and $rpn.chars > 1)) is export { decompose_rpn_nc($rpn) }
 
 =begin pod
 
