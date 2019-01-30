@@ -132,12 +132,18 @@ class Player does Solutions {
 
   method turn( Board $B ) {
 
-    self.filter_solutions($B); 
+    #    self.filter_solutions($B);
+        
+    unless ($B.equation_feasible) {
+      msg "***I challenge -- I see no possibility of solution";
+      return Play.new(who=>$!name,type=>'Terminal',notes=>'no solution possible');
+    }
+
     self.generate_solutions($B) unless (self.found);
     
-    unless ($B.equation_feasible and self.found) {
-      msg "***I challenge -- I see no solution";
-      return Play.new(who=>$!name,type=>'Terminal',notes=>'no solution possible');
+    unless (self.found) {
+      msg "***I challenge -- I can't find any solution";
+      return Play.new(who=>$!name,type=>'Terminal',notes=>'I cannot find a solution');
     }
     
     my Board_Solver $BS .= new($B);

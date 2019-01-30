@@ -45,6 +45,8 @@ class RPN {
 my %RPN_CACHE;   # maintained for all objects
 my %NUM= ^10 X=> 1;
 
+sub clear_RPN_Cache() is export { %RPN_CACHE=() }
+
 # Regexes / Tokens go here... MOVE TO GLOBALS?
 
 our token digit            { \d }
@@ -81,12 +83,7 @@ sub filter_bag(Bag $b, &filter) { my @b=$b.kxxv; bag( @b.grep({ &filter }) ) }
 sub ops_bag(Bag $b) is export { filter_bag($b, &op    ) }
 sub num_bag(Bag $b) is export { filter_bag($b, &digit ) } 
 
-sub rpn_value_nc2($rpn) { 
-  return Nil unless $rpn.defined;
-  return %RPN_CACHE{$rpn} if %RPN_CACHE{$rpn}.defined;
-  return %RPN_CACHE{$rpn}= +$rpn if $rpn.chars==1;
-  rpn_value_2($rpn); 
-}
+sub rpn_value($rpn where valid_rpn($rpn)) is export { rpn_value_nc1($rpn) }
 
 sub rpn_value_nc1($rpn) { 
   return Nil unless $rpn.defined;
@@ -94,15 +91,13 @@ sub rpn_value_nc1($rpn) {
   return %RPN_CACHE{$rpn}= +$rpn if $rpn.chars==1;
   rpn_value_1($rpn); 
 }
-
-sub rpn_value-new($rpn where valid_rpn($rpn)) is export { rpn_value_nc2($rpn) }
-sub rpn_value($rpn where valid_rpn($rpn))     is export { rpn_value_nc1($rpn) }
-
-sub rpn_value_2($rpn) { 
-  my ($r1,$r2,$op)=decompose_rpn_nc($rpn);
-  calc(rpn_value_nc2($r1),$op,rpn_value_nc2($r2));
-}
   
+# investigated timing of both the "decompose RPN" approach, and the
+# "convert to aos and EVAL" approach.  These were both slower (by a factor
+# of 4 and 10, respectively) than the stack approach taken here.  
+# Note that the '@' doesn't EVAL, so whenever that character showed up in the RPN,
+# a different approach had to be used.
+
 sub rpn_value_1($rpn) { # $rpn guaranteed to be more than 1 char
   my @list=$rpn.comb;
   return 0 unless (+@list);
@@ -122,15 +117,17 @@ sub rpn_value_1($rpn) { # $rpn guaranteed to be more than 1 char
 }
 
 # in Perl5 profiling, this was faster than using given/when or $opssubs{$op}->($n1,$n2)
+# checked also for this Perl6 code.  The "if" version runs at ~1.2 kHz, whil the
+# hash on operator keys with closure values executes at ~1 kHz.
 
 sub calc ($n1,$op,$n2) is export {
   return Nil unless ($n1.defined and $n2.defined);
-  return $n1+$n2                                                          if $op eq '+';
-  return $n1-$n2                                                          if $op eq '-';
-  return $n1*$n2                                                          if $op eq '*';
-  return ( ($n2==0)                            ?? Nil !! $n1/$n2        ) if $op eq '/';
-  return ( ($n1==0 and $n2 < 0) or ($n2 > 100) ?? Nil !! $n1**$n2       ) if $op eq '^';  # should be abs($n2)
-  return ( ($n1==0 or ($n2 < 0 and $n1 > 0))   ?? Nil !! $n2**(1.0/$n1) ) if $op eq '@';  # should do more range checks
+  return $n1+$n2                                                               if $op eq '+';
+  return $n1-$n2                                                               if $op eq '-';
+  return $n1*$n2                                                               if $op eq '*';
+  return ( ($n2==0)                                 ?? Nil !! $n1/$n2        ) if $op eq '/';
+  return ( ($n1==0 and $n2 < 0) or (abs($n2) > 100) ?? Nil !! $n1**$n2       ) if $op eq '^';  # should be abs($n2)
+  return ( ($n1==0 or ($n2 < 0 and $n1 > 0))        ?? Nil !! $n2**(1.0/$n1) ) if $op eq '@';  # should do more range checks
   quit "Unrecognized operator:  $op";
 }
 

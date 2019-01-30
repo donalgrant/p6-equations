@@ -24,15 +24,27 @@ sub MAIN(
 
   diag "generate RPN set for timing test";
 
-  sub timing-test(&calc_sub,$label,$nnum=4,$nops=3) {
+  sub timing-test(&calc_sub,$label,$nnum=5,$nops=4,$max=20000) {
 
     subtest $label => {
       my $t0=now.Real;
-      my @pn=get_tuples $nnum, Bag.new((^10).roll($nnum)),         num_bag(Bag.new);  # no required cubes
-      my @po=get_tuples $nops, Bag.new(qw{ + - * / @ ^ }.roll(5)), ops_bag(Bag.new);  # no required cubes
+      my @pn=get_tuples $nnum, Bag.new((^10).roll($nnum)),              num_bag(Bag.new);  # no required cubes
+      my @po=get_tuples $nops, Bag.new(qw{ + - * / ^  @ }.roll($nops)), ops_bag(Bag.new);  # no required cubes
       my @ops_slots=ops_slots($nops);
       my $n_solutions= @pn * @po * @ops_slots;    # numeric context -- product of array sizes
       diag "will be $n_solutions candidate RPNs generated";
+      if ($n_solutions>$max) {
+	my $reduce_factor=min( 4.0, ($n_solutions/$max)**(1.0/3.0) ); 
+	my $nsl=max( 3, (+@ops_slots/$reduce_factor).floor ); 
+	my $max_tuples=sqrt($max/@ops_slots).floor;
+	my $npn=$max_tuples;
+	my $npo=$max_tuples;
+	@pn       =choose_n $npn, @pn;
+	@po       =choose_n $npo, @po;
+	@ops_slots=choose_n $nsl, @ops_slots;
+	$n_solutions= @pn * @po* @ops_slots;
+	diag "after sub-select, n_solutions=$n_solutions";
+      }
       my $i=0;
       for @pn -> $pn {  
 	for @po -> $po { 
@@ -42,15 +54,18 @@ sub MAIN(
 	  }
 	}
       }
-      diag "execution rate for $label was {(now.Real-$t0)/($n_solutions/1000)} kHz";
+      my $t=now.Real;
+      diag "{($t-$t0).round(0.1)} seconds:  rate for $label ($nnum, $nops) was {($i/($t-$t0)).round} Hz";
     }
     
   }
 
-  timing-test(&rpn_value-new,'time calc2 (1)');
-  timing-test(&rpn_value,'time calc1 (1)');
-  timing-test(&rpn_value-new,'time calc2 (2)');
-  timing-test(&rpn_value,'time calc1 (2)');
+#  for 1..3 { clear_RPN_Cache; timing-test(&rpn_value,    "time calc: iteration $_") }
+
+  clear_RPN_Cache;
+  for 1..8 {
+    timing-test(&rpn_value, "cacheing with $_ ops", $_+1, $_);
+  }
   
   done-testing;
 
