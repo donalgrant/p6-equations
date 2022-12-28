@@ -1,9 +1,10 @@
 use v6;
 
-use Algorithm::Combinatorics:from<Perl5> qw<tuples combinations permutations>;
+use Math::Combinatorics :ALL;
 
-use lib ".";
+# use lib q<.>;
 use Globals;
+use Tuples;
 use RPN;
 
 sub board_sort($a,$b) { $a~~/\d/ && $b~~/\d/ ?? $a <=> $b !! ( $a~~/\d/ ?? +1 !! ($b~~/\d/ ?? -1 !! $a cmp $b) ) }  # ops before digits
@@ -92,7 +93,7 @@ class Board {
     my @goal_options=$digit_bag.pairs.grep( *.value==1 ).map( *.key ); 
     for 2..$max_digits -> $k {                                         
       last if $k>$digit_bag.total;
-      my @p=tuples( $digit_bag.kxxv, $k );                             
+      my @p=variations( $digit_bag.kxxv, $k );                             
       @goal_options.push( |@p.unique(:as( *.join('') )).map( *.join('') ).grep( none /^0\d+/ ) );
     }
     @goal_options;   

@@ -2,7 +2,7 @@ use v6;
 
 unit module Globals;
 
-use Algorithm::Combinatorics:from<Perl5> qw<tuples combinations permutations>;
+#use Algorithm::Combinatorics:from<Perl5> qw<tuples combinations permutations>;
 
 our %opt;  # global options
 our %debug; # debug keywords
@@ -65,17 +65,17 @@ sub shuffle ( @array ) is export { my @c=@array; shuffle_in_place @c; return @c 
 
 sub chance( Numeric $x ) is export { return rand < $x }
 
-sub p5-deref1( $p5ref ) is export {
-  [ gather { for @$p5ref -> $a { take @$a } } ]
-}
-
-sub p5-deref2( $p5ref ) is export {
-  [ gather {
-      for @$p5ref -> $a {
-	take [ gather { for @$a -> $b { take @$b } } ]
-      }
-    } ]
-}
+#sub p5-deref1( $p5ref ) is export {
+#  [ gather { for @$p5ref -> $a { take @$a } } ]
+#}
+#
+#sub p5-deref2( $p5ref ) is export {
+#  [ gather {
+#      for @$p5ref -> $a {
+#	take [ gather { for @$a -> $b { take @$b } } ]
+#      }
+#    } ]
+#}
 
 # compute a string corresponding to the number of operators allowable in an RPN expression
 # at each position defined by the digits in the string, where the first position is after
@@ -115,43 +115,15 @@ sub ops_slots($n) is export {
 # created consistent with the number of operations in $ops_list
 
 sub num-ops-slot($num_list,$ops_list,$slot) is export {
-#  msg "constructing RPN for pn={$num_list.join(',')}; po={$ops_list.join(',')}; slot=$slot" if debug('RPN-build');
+  msg "constructing RPN for pn={$num_list.join(',')}; po={$ops_list.join(',')}; slot=$slot" if debug('RPN-build');
   my ($ipn,$ipo)=(0,0);
   my $x=$num_list[$ipn++];
   for $slot.comb -> $s {
-#    msg "inner block:  s=$s, x=$x, ipn=$ipn, ipo=$ipo, pn={$num_list.join(',')}, po={$ops_list.join(',')}" if debug('RPN-build');
+    msg "inner block:  s=$s, x=$x, ipn=$ipn, ipo=$ipo, pn={$num_list.join(',')}, po={$ops_list.join(',')}" if debug('RPN-build');
     $x~=$num_list[$ipn++];
     $x~=$ops_list[$ipo++] for (1..$s);
   }
   return $x;
-}
-
-sub unique_tuples(@a) is export { @a.unique(:as( *.join('') )) }
-
-# generate the list of tuples of length $n from Bag $src while enforcing use of all in Bag $req
-
-sub get_tuples($n,Bag $src,Bag $req) is export { 
-  return () unless $src ⊇ $req;
-  return () unless $n >= $req.total;   # can't generate tuples w/length less than # of req cubes
-  my $remain=($src ∖ $req).BagHash;
-  my @req_list=$req.kxxv;
-  # this is tricky -- combinations will return an array of arrays unless there is only a single combination, in which case it's just an array
-  # single combination happens in case where number of elements to combine is the same as the number at a time for the combinations
-  my @comb = gather {
-    if ($n > @req_list) {
-      if ($n-@req_list == $remain.total) {
-	take [ gather { @req_list.map({ take $_ }); [$remain.kxxv].map({ take $_ }) } ];
-      } else {
-	unique_tuples(
-	  gather {
-	    p5-deref1(combinations( $[ $remain.kxxv ], $n - @req_list )).map({ take Array.new.append(@req_list).append(@$_) });
-	  }
-	).map({ take $_ });
-      }
-    } else { take $[ $req.kxxv ] }
-  }
-  # now for each element of @comb, generate all the permutations and add to the total list; return unique tuples
-  unique_tuples gather { for (@comb) { p5-deref1(permutations( $_ )).map({ take $_ }) } }
 }
 
 sub choose_n($n,@c) is export {

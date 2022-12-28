@@ -2,7 +2,7 @@
 
 use v6;
 
-use Algorithm::Combinatorics:from<Perl5> qw<tuples>;
+# use Algorithm::Combinatorics:from<Perl5> qw<tuples>;
 
 use lib '/Users/imel/gitdev/donalgrant/p6-equations/lib';
 
@@ -65,7 +65,7 @@ sub MAIN(
 
   # Play the game
 
-  loop {
+  loop {  # need to implement non-bluff demonstration to win
 
     last unless do-move($B,$P1.turn($B));
     last unless do-move($B,$P2.turn($B));

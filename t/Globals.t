@@ -2,8 +2,6 @@
 
 use v6;
 
-use Algorithm::Combinatorics:from<Perl5> qw<tuples combinations permutations>;
-
 my $lib;
 
 BEGIN { $lib=q{/Users/imel/gitdev/donalgrant/p6-equations/lib} }
@@ -142,106 +140,6 @@ sub MAIN(
     ok( 7500 <= $y <= 8500, "Odds are reasonable ($y out of 10000) for 80% chance" );
   }
   
-  subtest "Combinatorics" => {
-    my $x=(1,2,3);
-    my @x=[1,2,3];
-  
-    is-deeply p5-deref1(permutations($x)), [ [1,2,3], [1,3,2], [2,1,3], [2,3,1], [3,1,2], [3,2,1] ], "Permutations of ({$x.join(',')})";
-    is-deeply p5-deref1(permutations(@x)), [ [1,2,3], [1,3,2], [2,1,3], [2,3,1], [3,1,2], [3,2,1] ], "Permutations of [{@x.join(',')}]";
-  
-    is-deeply p5-deref1(combinations($x,1)), [ [1], [2], [3] ],       "Combinations of ({$x.join(',')}) one at a time";
-    is-deeply p5-deref1(combinations($x,2)), [ [1,2], [1,3], [2,3] ], "Combinations of ({$x.join(',')}) two at a time";
-    is-deeply p5-deref1(combinations($x,3)), [ (1,), (2,), (3,) ],    "Combinations of ({$x.join(',')}) three at a time";
-  
-    is-deeply p5-deref1(combinations(@x,1)), [ [1], [2], [3] ],       "Combinations of [{$x.join(',')}] one at a time";
-    is-deeply p5-deref1(combinations(@x,2)), [ [1,2], [1,3], [2,3] ], "Combinations of [{$x.join(',')}] two at a time";
-    is-deeply p5-deref1(combinations(@x,3)), [ (1,), (2,), (3,) ],    "Combinations of [{$x.join(',')}] three at a time";
-  
-    is-deeply p5-deref1(tuples($x,1)), [ [1], [2], [3] ],                                        "tuples of ({$x.join(',')}) one at a time";
-    is-deeply p5-deref1(tuples($x,2)), [ [1,2], [1,3], [2,1], [2,3], [3,1], [3,2] ],             "tuples of ({$x.join(',')}) two at a time";
-    is-deeply p5-deref1(tuples($x,3)), [ [1,2,3], [1,3,2], [2,1,3], [2,3,1], [3,1,2], [3,2,1] ], "tuples of ({$x.join(',')}) three at a time";
-  
-    is-deeply p5-deref1(tuples(@x,1)), [ [1], [2], [3] ],                                        "tuples of [{$x.join(',')}] one at a time";
-    is-deeply p5-deref1(tuples(@x,2)), [ [1,2], [1,3], [2,1], [2,3], [3,1], [3,2] ],             "tuples of [{$x.join(',')}] two at a time";
-    is-deeply p5-deref1(tuples(@x,3)), [ [1,2,3], [1,3,2], [2,1,3], [2,3,1], [3,1,2], [3,2,1] ], "tuples of [{$x.join(',')}] three at a time";
-  
-    my @y=[ [1,2], [2,3], [3,4] ];
-  
-    is-deeply p5-deref2(permutations( @y )), [ [ [1,2],[2,3],[3,4] ],
-  					     [ [1,2],[3,4],[2,3] ],
-  					     [ [2,3],[1,2],[3,4] ],
-  					     [ [2,3],[3,4],[1,2] ],
-  					     [ [3,4],[1,2],[2,3] ],
-  					     [ [3,4],[2,3],[1,2] ] ],    "Permutations of [{@y.map({ $_.join(',') }).join('],[')}]";
-  
-    is-deeply p5-deref2(combinations( @y,1 )), [ [ [1,2], ],
-  					       [ [2,3], ],
-  					       [ [3,4], ] ],"Combinations of [{@y.map({ $_.join(',') }).join('],[')}] one at a time";
-  
-    is-deeply p5-deref2(combinations( @y,2 )), [ [ [1,2],[2,3] ],
-  					       [ [1,2],[3,4] ],
-  					       [ [2,3],[3,4] ] ],        "Combinations of [{@y.map({ $_.join(',') }).join('],[')}] two at a time";
-  
-    is-deeply p5-deref1(combinations( @y,3 )), [ [ [1,2],[2,3],[3,4] ] ],  "Combinations of [{@y.map({ $_.join(',') }).join('],[')}] three at a time";
-  
-    is-deeply p5-deref2(tuples( @y,1 )), [ [ [1,2], ],
-  					 [ [2,3], ],
-  					 [ [3,4], ] ], "tuples of [{@y.map({ $_.join(',') }).join('],[')}] one at a time";
-  
-    is-deeply p5-deref2(tuples( @y,2 )), [ [ [1,2],[2,3] ],
-  					 [ [1,2],[3,4] ],
-  					 [ [2,3],[1,2] ],
-  					 [ [2,3],[3,4] ],
-  					 [ [3,4],[1,2] ],
-  					 [ [3,4],[2,3] ] ], "tuples of [{@y.map({ $_.join(',') }).join('],[')}] two at a time";
-  
-    is-deeply p5-deref2(tuples( @y,3 )), [ [ [1,2],[2,3],[3,4] ],
-  					 [ [1,2],[3,4],[2,3] ],
-  					 [ [2,3],[1,2],[3,4] ],
-  					 [ [2,3],[3,4],[1,2] ],
-  					 [ [3,4],[1,2],[2,3] ],
-  					 [ [3,4],[2,3],[1,2] ] ], "tuples of [{@y.map({ $_.join(',') }).join('],[')}] three at a time";
-    
-  
-    my @z=[ [1,], [2,], [3,] ];
-  
-    is-deeply p5-deref2(permutations( @z )), [ [ [1,],[2,],[3,] ],
-  					     [ [1,],[3,],[2,] ],
-  					     [ [2,],[1,],[3,] ],
-  					     [ [2,],[3,],[1,] ],
-  					     [ [3,],[1,],[2,] ],
-  					     [ [3,],[2,],[1,] ] ],    "Permutations of [{@z.map({ $_.join(',') }).join('],[')}]";
-    
-    is-deeply p5-deref2(combinations( @z,1 )), [ [ [1,], ],
-  					       [ [2,], ],
-  					       [ [3,], ] ],"Combinations of [{@z.map({ $_.join(',') }).join('],[')}] one at a time";
-    
-    is-deeply p5-deref2(combinations( @z,2 )), [ [ [1,],[2,] ],
-  					       [ [1,],[3,] ],
-  					       [ [2,],[3,] ] ],        "Combinations of [{@z.map({ $_.join(',') }).join('],[')}] two at a time";
-    
-    is-deeply p5-deref1(combinations( @z,3 )), [ [ [1,],[2,],[3,] ] ],  "Combinations of [{@z.map({ $_.join(',') }).join('],[')}] three at a time";
-    
-    is-deeply p5-deref2(tuples( @z,1 )), [ [ [1,], ],
-  					 [ [2,], ],
-  					 [ [3,], ] ], "tuples of [{@z.map({ $_.join(',') }).join('],[')}] one at a time";
-    
-    is-deeply p5-deref2(tuples( @z,2 )), [ [ [1,],[2,] ],
-  					 [ [1,],[3,] ],
-  					 [ [2,],[1,] ],
-  					 [ [2,],[3,] ],
-  					 [ [3,],[1,] ],
-  					 [ [3,],[2,] ] ], "tuples of [{@z.map({ $_.join(',') }).join('],[')}] two at a time";
-    
-    is-deeply p5-deref2(tuples( @z,3 )), [ [ [1,],[2,],[3,] ],
-  					 [ [1,],[3,],[2,] ],
-  					 [ [2,],[1,],[3,] ],
-  					 [ [2,],[3,],[1,] ],
-  					 [ [3,],[1,],[2,] ],
-  					 [ [3,],[2,],[1,] ] ], "tuples of [{@z.map({ $_.join(',') }).join('],[')}] three at a time";
-  
-  }
-  
   subtest "ops_slots" => {
     is ops_slots(1).sort, ['1'].sort,                                        "ops slot for 1";
     is ops_slots(2).sort, ['11','02'].sort,                                  "ops slots for 2";
@@ -268,34 +166,6 @@ sub MAIN(
     ok choose_n([ ^6 ].elems,[ ^6 ]) ==  [ ^6 ], "choose_n can select the entire set";
     is-deeply choose_n(100,[ ^6 ]),      [ ^6 ], "choose_n returns original set if n out of range";
     dies-ok { choose_n(0,[ ^6 ]) },              "choose_n fails on n < 1";
-  }
-  
-  subtest "get_tuples" => {
-    my $src=[ 1..4 ];
-    my $req=[ 2, 3 ];
-    
-    is-deeply get_tuples(1,$req.Bag,$src.Bag).sort, (),           "req must be subset of src";
-    is-deeply get_tuples(1,$src.Bag,$req.Bag).sort, (),           "get_tuples one at a time";
-    is-deeply get_tuples(2,$src.Bag,$req.Bag).sort,
-    [ [2,3], [3,2] ].sort,                                         "get_tuples two at a time";
-    
-    is-deeply get_tuples(3,$src.Bag,$req.Bag).sort,
-    [ [1,2,3], [1,3,2], [2,1,3], [2,3,1], [3,1,2], [3,2,1],
-      [2,3,4], [2,4,3], [3,2,4], [3,4,2], [4,2,3], [4,3,2] ].sort, "get_tuples three at a time";
-    
-    is-deeply get_tuples(4,$src.Bag,$req.Bag).sort,
-    [ [1,2,3,4], [1,2,4,3], [1,3,2,4], [1,3,4,2],
-      [1,4,2,3], [1,4,3,2], [2,1,3,4], [2,1,4,3],
-      [2,3,1,4], [2,3,4,1], [2,4,1,3], [2,4,3,1],
-      [3,1,2,4], [3,1,4,2], [3,2,1,4], [3,2,4,1],
-      [3,4,1,2], [3,4,2,1], [4,1,2,3], [4,1,3,2],
-      [4,2,1,3], [4,2,3,1], [4,3,1,2], [4,3,2,1] ].sort,           "get_tuples four at a time";
-  }
-  
-  subtest "unique_tuples" => {
-    is-deeply unique_tuples( [ [1,2,3], [1,3,2], [2,1,3], [1,3,2], [2,1,3] ] ).sort,
-                             [ [1,2,3], [1,3,2], [2,1,3] ].sort,
-  			   "unique_tuples removes duplicates";
   }
   
   done-testing;

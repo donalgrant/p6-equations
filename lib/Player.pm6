@@ -203,7 +203,9 @@ class Player does Solutions {
       self.generate_solutions($B) unless $still_doable.found;
     }
 
-    self.filter_solutions($B); 
+    msg "{self.name} solutions before filtering: {self.rpn_list>>.display}" if debug 'monitor solutions';
+    self.filter_solutions($B);
+    msg "{self.name} solutions after filtering:  {self.rpn_list>>.display}" if debug 'monitor solutions';
     self.choose_move($B);  
   }
   

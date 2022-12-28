@@ -14,6 +14,9 @@ use RPN;
 use-ok 'Globals';
 use Globals;
 
+use-ok 'Tuples';
+use Tuples;
+
 sub MAIN(
   :$verbose=False,       #= print extra diagnostic messages (default=False)
   :$debug,               #= comma separated list of debug labels (or 'all') (default none)

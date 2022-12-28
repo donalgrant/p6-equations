@@ -1,8 +1,9 @@
 use v6;
 
-use Algorithm::Combinatorics:from<Perl5> qw<tuples combinations permutations>;
+# use Algorithm::Combinatorics:from<Perl5> qw<tuples combinations permutations>;
 
 use Globals;
+use Tuples;
 use RPN;
 use Board;
 use Solutions;
@@ -74,9 +75,9 @@ class Board_Solver does Solutions {
     my @pn=get_tuples $nnum, $num, num_bag($!B.R.Bag);
     my @po=get_tuples $nops, $ops, ops_bag($!B.R.Bag);
     my @ops_slots=ops_slots($nops);
-    msg "pn=[{@pn.map({ $_.join(',') }).join('],[')}]" if debug;
-    msg "po=[{@po.map({ $_.join(',') }).join('],[')}]" if debug;
-    msg "ops_slots={@ops_slots.join(',')}" if debug;
+    msg "pn={@pn.raku}" if debug;
+    msg "po={@po.raku}" if debug;
+    msg "ops_slots={@ops_slots}" if debug;
     my $n_solutions= @pn * @po * @ops_slots;    # numeric context -- product of array sizes
     msg "n_solutions=$n_solutions" if debug 'nsolutions';
     die "issue with get_tuples? pn={@pn}, po={@po}; ops_slots={@ops_slots}" unless $n_solutions>0;
@@ -89,7 +90,7 @@ class Board_Solver does Solutions {
       @pn       =choose_n $npn, @pn;
       @po       =choose_n $npo, @po;
       @ops_slots=choose_n $nsl, @ops_slots;
-      $n_solutions= @pn * @po* @ops_slots;
+      $n_solutions= @pn * @po * @ops_slots;
       msg "after sub-select, n_solutions=$n_solutions" if debug;
     }
     my $i=0;
