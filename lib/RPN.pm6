@@ -83,7 +83,8 @@ sub filter_bag(Bag $b, &filter) { my @b=$b.kxxv; bag( @b.grep({ &filter }) ) }
 sub ops_bag(Bag $b) is export { filter_bag($b, &op    ) }
 sub num_bag(Bag $b) is export { filter_bag($b, &digit ) } 
 
-sub rpn_value($rpn where valid_rpn($rpn)) is export { rpn_value_nc1($rpn) }
+multi sub rpn_value(Int $num where $num < 0)    is export { say "got $num in rpn_value"; rpn_value('0'~$num.abs~'-') }
+multi sub rpn_value($rpn where valid_rpn($rpn)) is export { rpn_value_nc1($rpn) }
 
 sub rpn_value_nc1($rpn) { 
   return Nil unless $rpn.defined;
@@ -271,7 +272,10 @@ sub decompose_rpn_nc(Str $rpn) {
   return [$arg1,$arg2,$op];
 }
 
-sub decompose_rpn(Str $rpn where (valid_rpn($rpn) and $rpn.chars > 1)) is export { decompose_rpn_nc($rpn) }
+sub decompose_rpn(Str $rpn) is export {
+    if (valid_rpn($rpn) and $rpn.chars > 1) { return decompose_rpn_nc($rpn) }
+    die "failure of decompose_rpn on argument=$rpn";
+}
 
 =begin pod
 

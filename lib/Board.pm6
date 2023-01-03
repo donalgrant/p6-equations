@@ -93,8 +93,11 @@ class Board {
     my @goal_options=$digit_bag.pairs.grep( *.value==1 ).map( *.key ); 
     for 2..$max_digits -> $k {                                         
       last if $k>$digit_bag.total;
-      my @p=variations( $digit_bag.kxxv, $k );                             
+      msg "for $k cube goals, taking permutations of {$digit_bag.kxxv}" if debug 'goal options';
+      my @p=variations( $digit_bag.kxxv, $k );
+      msg "  adding these goal options: {@p}" if debug 'goal options';
       @goal_options.push( |@p.unique(:as( *.join('') )).map( *.join('') ).grep( none /^0\d+/ ) );
+      msg "  new list of goal options:  {@goal_options}" if debug 'goal options';
     }
     @goal_options;   
   }

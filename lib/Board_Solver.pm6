@@ -43,14 +43,14 @@ class Board_Solver does Solutions {
     ( $cube ∈ $!B.U ) ?? $cube !! Nil;
   }
 
-  method solve(:$min_cubes=1,:$max_cubes=7,:$max_solutions=20000,:$quit_on_found=True) {
+  method solve(:$min_cubes=1,:$max_cubes=9,:$max_solutions=20000,:$quit_on_found=True) {
     my $start_cubes=max($min_cubes,self.min_solution_cubes);
     my $end_cubes=min($max_cubes,self.max_solution_cubes);
     return self if $end_cubes < $start_cubes;
-    msg "solve for goal {$!B.goal} from $start_cubes to $end_cubes" if debug;
+    msg "solve for goal {$!B.goal} from $start_cubes to $end_cubes" if debug 'solve';
     for $start_cubes, {$_+2}...$end_cubes -> $n {
       self.calculate_solutions($n,:$max_solutions);
-      msg "in solve after calculate with n=$n; solutions {self.list.join('; ')}" if debug;
+      msg "in solve after calculate with n=$n; solutions {self.list.join('; ')}" if debug 'solve';
       return self if $quit_on_found and self.found;
     }
     self;
@@ -61,25 +61,25 @@ class Board_Solver does Solutions {
     die "Goal must be set before calculating solutions" unless $!B.goal.defined;
     die "Number of cubes in a solution must be odd!" if $ncubes %% 2;
     return self unless $!B.equation_feasible;
-    msg "allowed={$!B.allowed.Bag.kxxv.join(',')}" if debug;
+    msg "allowed={$!B.allowed.Bag.kxxv.join(',')}" if debug 'calc';
     my Bag $num = num_bag($!B.allowed.Bag);
     my Bag $ops = ops_bag($!B.allowed.Bag);
-    msg "allowed num={$num.kxxv.join(',')}, ops={$ops.kxxv.join(',')}" if debug;
+    msg "allowed num={$num.kxxv.join(',')}, ops={$ops.kxxv.join(',')}" if debug 'calc';
     if ($ncubes==1) { self.save(~$!B.goal) if $!B.goal (elem) $num; return self }
     my $nops=min($ops.total,$num.total-1,floor($ncubes/2));
     my $nnum=min($nops+1,$num.total,$ncubes-$nops);
-    msg "nops=$nops; nnum=$nnum" if debug;
+    msg "nops=$nops; nnum=$nnum" if debug 'calc';
     return Nil unless $nops>=1 && $nnum>=2;
     return Nil if num_bag($!B.R.Bag).total > $nnum;
     return Nil if ops_bag($!B.R.Bag).total > $nops;
     my @pn=get_tuples $nnum, $num, num_bag($!B.R.Bag);
     my @po=get_tuples $nops, $ops, ops_bag($!B.R.Bag);
     my @ops_slots=ops_slots($nops);
-    msg "pn={@pn.raku}" if debug;
-    msg "po={@po.raku}" if debug;
-    msg "ops_slots={@ops_slots}" if debug;
+    msg "pn={@pn.raku}" if debug 'calc variations';
+    msg "po={@po.raku}" if debug 'calc variations';
+    msg "ops_slots={@ops_slots}" if debug 'calc variations';
     my $n_solutions= @pn * @po * @ops_slots;    # numeric context -- product of array sizes
-    msg "n_solutions=$n_solutions" if debug 'nsolutions';
+    msg "n_solutions=$n_solutions" if debug 'calc';
     die "issue with get_tuples? pn={@pn}, po={@po}; ops_slots={@ops_slots}" unless $n_solutions>0;
     if ($n_solutions>$max_solutions) {
       my $reduce_factor=min( 4.0, ($n_solutions/$max_solutions)**(1.0/3.0) ); 
@@ -91,15 +91,16 @@ class Board_Solver does Solutions {
       @po       =choose_n $npo, @po;
       @ops_slots=choose_n $nsl, @ops_slots;
       $n_solutions= @pn * @po * @ops_slots;
-      msg "after sub-select, n_solutions=$n_solutions" if debug;
+      msg "after sub-select, n_solutions=$n_solutions" if debug 'calc';
     }
     my $i=0;
     for @pn -> $pn {  
       for @po -> $po { 
         for @ops_slots -> $slot {  # now construct this RPN
+	  msg "constructing rpn from $pn, $po, $slot" if debug 'calc-every-rpn';
 	  my RPN $rpn .= new(num-ops-slot($pn,$po,$slot));  # could be undefined ('10/', etc)
 	  self.save($rpn) if $rpn.defined and +$rpn==$!B.goal;
-	  msg "{num-ops-slot($pn,$po,$slot)} at count=$i / $n_solutions" if debug('count') and ++$i %% 5000;
+	  msg "{num-ops-slot($pn,$po,$slot)} at count=$i / $n_solutions" if debug('calc') and ++$i %% 5000;
 	}
       }
     }
@@ -114,8 +115,10 @@ class Board_Solver does Solutions {
 sub board_solver(Board $B) is export { return Board_Solver.new($B) }
 
 sub find_goal(Board $B, Int :$max_digits=2) is export {
-  for shuffle($B.goal_options($max_digits)) -> $g {
-    msg "find_goal -- trying $g" if debug;
+  my @go=$B.goal_options($max_digits);
+  msg "goal options are: {@go}" if debug 'goal_options';
+  for shuffle(@go) -> $g {
+    msg "find_goal -- trying $g" if debug 'find_goal';
     return $g if board_solver(board($B.U.clone).move_to_goal($g)).solve.found;
   }
   return Nil;
@@ -127,12 +130,13 @@ sub find_goal(Board $B, Int :$max_digits=2) is export {
 #   not in the rest of it, namely, $req (-) ($rpn-$rpn_extract+$arg1+alt_cube)
 
 sub replace_op(BagHash $excess, BagHash $req, $cube, $alt_cube, $rpn, &goal_fn, :$swap=False, :$exp=False) {
-  msg "try_replace on $rpn for $cube with $alt_cube vs. {$excess.kxxv.join(',')} and req {$req.kxxv.join(',')}" if debug;
+  msg "try_replace on $rpn for $cube with $alt_cube vs. {$excess.kxxv.join(',')} and req {$req.kxxv.join(',')}" if debug 'replace_op';
   for 0..Inf -> $nskip {
     my $rpn_extract=$rpn.rpn_at_op($cube,$nskip);
     last unless $rpn_extract.defined;
-    msg "rpn=$rpn; nskip=$nskip; rpn_extract=$rpn_extract" if debug;
+    msg "rpn=$rpn; nskip=$nskip; rpn_extract=$rpn_extract" if debug 'replace_op';
     my ($arg1,$arg2,$op)=decompose_rpn(rpn_at_op($rpn_extract,$cube,$nskip));
+    msg "after decompose, arg1=$arg1, arg2=$arg2, op=$op" if debug 'replace_op';
     ($arg1,$arg2).=reverse if $swap;
     last if rpn_value($arg2)==0 and abs(&goal_fn('2')) < 1.0;  # trap divide-by-zero
     my $e=$excess ⊎ rpn($arg2).Bag;
@@ -167,7 +171,7 @@ sub find_replacement(Board $B, BagHash $missing, RPN $rpn) is export {
   my $h=replacement_hash($rpn,$cube,$excess);
   my @R;
   if (not %Replacement_Cache{$h}.defined) {
-    msg "find a replacement for $cube in $rpn using excess {$excess.kxxv.join(',')}" if debug;
+    msg "find a replacement for $cube in $rpn using excess {$excess.kxxv.join(',')}" if debug 'find_replacement';
     given $cube {
       when /<digit>/ { @R = gather replace_digit($excess,$cube,$rpn) }
       when /<[+]>/   { @R = gather { replace_op($excess,$B.R,'+','-',$rpn,{  '-'~rpn_value($^a) },swap=>$_) for (False,True) } }
@@ -177,7 +181,7 @@ sub find_replacement(Board $B, BagHash $missing, RPN $rpn) is export {
       when /<[-/]>/  { @R = [] }
     }
     %Replacement_Cache{$h}=@R;
-  } else { msg "will use cached replacement {%Replacement_Cache{$h}.flat.join('; ')}" if debug }
+  } else { msg "will use cached replacement {%Replacement_Cache{$h}.flat.join('; ')}" if debug 'find_replacement' }
   return %Replacement_Cache{$h}.flat;
 }
 

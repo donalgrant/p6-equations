@@ -180,7 +180,7 @@ class Player does Solutions {
       for $not_doable.rpn_list -> $r {
 	my $missing = $BS.cubes-missing_for( $r );
 	if ($missing.elems > 0) {       # some cube(s) in the RPN will never be available
-	  msg "{$r.aos} is no longer doable -- needs {$missing.kxxv}" if debug;
+	  msg "{$r.aos} is no longer doable -- needs {$missing.kxxv}" if debug 'replace_missing';
 	  for find_replacement($B,$missing.BagHash,$r) -> $new_rpn {
 	    $still_doable.save($new_rpn);
 	    once { $not_doable.delete($r) }
@@ -214,8 +214,7 @@ class Player does Solutions {
     
     return self.crazy_move($B) if chance($!crazy_moves) and $B.U.elems > 1;    # non-thinking move -- has to be more than one cube left
 
-    # this shouldn't actually happen here
-    unless (self.found) { return Play.new(who=>$!name,type=>'Terminal',notes=>"no solution, but this shouldn't happen")  }
+    unless (self.found) { return Play.new(who=>$!name,type=>'Terminal',notes=>"I'm stumped")  }
 
     my Board_Solver $BS .= new($B);
 
