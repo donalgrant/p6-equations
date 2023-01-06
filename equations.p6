@@ -44,50 +44,56 @@ sub MAIN(
   my $P2=Player.new(name=>'Computer 2',
 		    crazy_moves=>0.2, required_crazy=>0.5, forbidden_crazy=>0.5, permitted_crazy=>0.0);
 
-  srand($seed) if $seed.defined;
-  my @c=[1..12].map({   Red_Cube.new });
-  my @d= [1..8].map({  Blue_Cube.new });
-  my @e= [1..6].map({ Green_Cube.new });
-  my @f= [1..6].map({ Black_Cube.new });
-  
-  my Cube_Bag $CB.=new([|@c,|@d,|@e,|@f]);
-
-  my $B;
-  
-  repeat {
-    $CB.roll;
-    $B=board(Bag.new($CB.showing));
-    msg $B.display;
-    my $g=board_solver($B).find_goal(max_digits=>$max_goal_digits);
-    $B.move_to_goal($g) if $g.defined;
-  } until $B.goal.defined;
-
-  msg "Starting Board:\n{$B.display}";
-
-  # Play the game
-
-  loop { 
-
-      msg "Turn {++$}:";
-      my $p;  # current play
-      
-      unless do-move($B,$p=$P1.turn($B)) {
-	  if (defined $p.rpn) { msg "{$P1.name} wins!"; last }
-	  my $s=$P2.filter_solutions($B).rpn_list;
-	  if ($s.elems==0) { msg "{$P1.name} wins by calling Bluff!" }
-	              else { msg "{$P2.name} not bluffing and wins with {$s>>.display}!" }
-	  last;
-      }
-      unless do-move($B,$p=$P2.turn($B)) {
-	  if (defined $p.rpn) { msg "{$P2.name} wins!"; last }
-	  my $s=$P1.filter_solutions($B).rpn_list;
-	  if ($s.elems==0) { msg "{$P2.name} wins by calling Bluff!" }
-	              else { msg "{$P1.name} not bluffing and wins with {$s>>.display}!" }
-	  last;
-      }
+  my $game_number=0;
+  loop {
+    msg "Game {++$game_number}";
+       
+    srand($seed) if $seed.defined;
+    my @c=[1..12].map({   Red_Cube.new });
+    my @d= [1..8].map({  Blue_Cube.new });
+    my @e= [1..6].map({ Green_Cube.new });
+    my @f= [1..6].map({ Black_Cube.new });
+    
+    my Cube_Bag $CB.=new([|@c,|@d,|@e,|@f]);
+    
+    my $B;
+    
+    repeat {
+      $CB.roll;
+      $B=board(Bag.new($CB.showing));
+      msg $B.display;
+      my $g=board_solver($B).find_goal(max_digits=>$max_goal_digits);
+      $B.move_to_goal($g) if $g.defined;
+    } until $B.goal.defined;
+    
+    msg "Starting Board:\n{$B.display}";
+    
+    # Play the game
+    
+    my $turn_number=0;    
+    loop { 
+        msg "Turn {++$turn_number}:";
+        my $p;  # current play
+        
+        unless do-move($B,$p=$P1.turn($B)) {
+    	  if (defined $p.rpn) { msg "{$P1.name} wins!"; last }
+    	  my $s=$P2.filter_solutions($B).rpn_list;
+    	  if ($s.elems==0) { msg "{$P1.name} wins by calling Bluff!" }
+    	              else { msg "{$P2.name} not bluffing and wins with {$s>>.display}!" }
+    	  last;
+        }
+        unless do-move($B,$p=$P2.turn($B)) {
+    	  if (defined $p.rpn) { msg "{$P2.name} wins!"; last }
+    	  my $s=$P1.filter_solutions($B).rpn_list;
+    	  if ($s.elems==0) { msg "{$P2.name} wins by calling Bluff!" }
+    	              else { msg "{$P1.name} not bluffing and wins with {$s>>.display}!" }
+    	  last;
+        }
+    
+    }
+    
+    msg "Final Board:\n{$B.display}";
 
   }
-
-  msg "Final Board:\n{$B.display}";
 }
 

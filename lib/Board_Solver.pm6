@@ -47,10 +47,10 @@ class Board_Solver does Solutions {
     my $start_cubes=max($min_cubes,self.min_solution_cubes);
     my $end_cubes=min($max_cubes,self.max_solution_cubes);
     return self if $end_cubes < $start_cubes;
-    msg "solve for goal {$!B.goal} from $start_cubes to $end_cubes" if debug 'solve';
+    msg "solve for goal {$!B.goal} from $start_cubes cubes to $end_cubes cubes" if debug 'solve';
     for $start_cubes, {$_+2}...$end_cubes -> $n {
       self.calculate_solutions($n,:$max_solutions);
-      msg "in solve after calculate with n=$n; solutions {self.list.join('; ')}" if debug 'solve';
+      msg "in solve after calculate with n=$n; solutions {self.list.join('; ')}" if debug 'solve_list';
       return self if $quit_on_found and self.found;
     }
     self;
@@ -75,9 +75,9 @@ class Board_Solver does Solutions {
     my @pn=get_tuples $nnum, $num, num_bag($!B.R.Bag);
     my @po=get_tuples $nops, $ops, ops_bag($!B.R.Bag);
     my @ops_slots=ops_slots($nops);
-    msg "pn={@pn.raku}" if debug 'calc variations';
-    msg "po={@po.raku}" if debug 'calc variations';
-    msg "ops_slots={@ops_slots}" if debug 'calc variations';
+    msg "pn={@pn.raku}" if debug 'calc_variations';
+    msg "po={@po.raku}" if debug 'calc_variations';
+    msg "ops_slots={@ops_slots}" if debug 'calc_variations';
     my $n_solutions= @pn * @po * @ops_slots;    # numeric context -- product of array sizes
     msg "n_solutions=$n_solutions" if debug 'calc';
     die "issue with get_tuples? pn={@pn}, po={@po}; ops_slots={@ops_slots}" unless $n_solutions>0;
@@ -131,23 +131,28 @@ sub find_goal(Board $B, Int :$max_digits=2) is export {
 
 sub replace_op(BagHash $excess, BagHash $req, $cube, $alt_cube, $rpn, &goal_fn, :$swap=False, :$exp=False) {
   msg "try_replace on $rpn for $cube with $alt_cube vs. {$excess.kxxv.join(',')} and req {$req.kxxv.join(',')}" if debug 'replace_op';
+  return unless $alt_cube ∈ ($excess ⊎ $req);  # no chance of doing the replacement -- alt_cube not there
   for 0..Inf -> $nskip {
     my $rpn_extract=$rpn.rpn_at_op($cube,$nskip);
     last unless $rpn_extract.defined;
-    msg "rpn=$rpn; nskip=$nskip; rpn_extract=$rpn_extract" if debug 'replace_op';
-    my ($arg1,$arg2,$op)=decompose_rpn(rpn_at_op($rpn_extract,$cube,$nskip));
-    msg "after decompose, arg1=$arg1, arg2=$arg2, op=$op" if debug 'replace_op';
-    ($arg1,$arg2).=reverse if $swap;
-    last if rpn_value($arg2)==0 and abs(&goal_fn('2')) < 1.0;  # trap divide-by-zero
-    my $e=$excess ⊎ rpn($arg2).Bag;
-    next unless $alt_cube ∈ $e;
-    my $used_cubes=($rpn.Bag ∖ rpn($rpn_extract).Bag) ⊎ rpn($arg1).Bag ⊎ Bag.new($alt_cube);
-    my $r=($req ∖ $used_cubes) // Bag.new;  # make sure $r is defined
-    for board_solver(Board.new(
-			    U=>$e.BagHash,R=>$r.BagHash,G=>(&goal_fn($arg2)).Str
-			  ).move_to_forbidden($alt_cube)
-			).solve(min_cubes=>3,max_cubes=>7,max_solutions=>10000).list
-    { take $rpn.Str.subst($rpn_extract.Str,($exp ?? $_~$arg1 !! $arg1~$_)~$alt_cube) }
+    for 0..$nskip -> $ns {
+      msg "rpn=$rpn; ns=$ns; nskip=$nskip; rpn_extract=$rpn_extract" if debug 'replace_op';
+      my $rao = rpn_at_op($rpn_extract,$cube,$ns);
+      next unless defined $rao;
+      my ($arg1,$arg2,$op)=decompose_rpn($rao);
+      msg "after decompose, arg1=$arg1, arg2=$arg2, op=$op" if debug 'replace_op';
+      ($arg1,$arg2).=reverse if $swap;
+      next if rpn_value($arg2)==0 and abs(&goal_fn('2')) < 1.0;  # trap divide-by-zero
+      my $e=$excess ⊎ rpn($arg2).Bag;
+      next unless $alt_cube ∈ $e;
+      my $used_cubes=($rpn.Bag ∖ rpn($rpn_extract).Bag) ⊎ rpn($arg1).Bag ⊎ Bag.new($alt_cube);
+      my $r=($req ∖ $used_cubes) // Bag.new;  # make sure $r is defined
+      # trap a tricky-to-parse case which leads to '--'
+      my $goal = ( ( &goal_fn('2') < 0) && (rpn_value($arg2) < 0) ) ?? abs(&goal_fn(abs(rpn_value($arg2)))) !! &goal_fn($arg2);
+      for board_solver(Board.new(U=>$e.BagHash,R=>$r.BagHash,G=>$goal.Str).move_to_forbidden($alt_cube)
+		      ).solve(min_cubes=>3,max_cubes=>7,max_solutions=>10000).list
+      { take $rpn.Str.subst($rpn_extract.Str,($exp ?? $_~$arg1 !! $arg1~$_)~$alt_cube) }
+    }
   }
 }
 

@@ -59,8 +59,8 @@ class Player does Solutions {
   }
 
   # should make cube_limit a Player parameter; would also like to thread this
-  method generate_solutions( Board $B, $cube_limit=13 ) {
-    for board_solver($B).solve(max_cubes=>$cube_limit).list { self.save($_) }
+  method generate_solutions( Board $B, :$cube_limit=11, :$max_solutions=10000 ) {
+    for board_solver($B).solve(max_cubes=>$cube_limit,:$max_solutions).list { self.save($_) }
     self;
   }
 
@@ -142,8 +142,13 @@ class Player does Solutions {
     self.generate_solutions($B) unless (self.found);
     
     unless (self.found) {
-      msg "***I challenge -- I can't find any solution";
-      return Play.new(who=>$!name,type=>'Terminal',notes=>'I cannot find a solution');
+      msg "Thinking about this really hard now...";
+      self.generate_solutions($B,max_cubes=>15,max_solutions=>100_000);
+      unless (self.found) {
+      	msg "***Player {$!name} challenge -- I can't find any solution";
+        return Play.new(who=>$!name,type=>'Terminal',notes=>'I cannot find a solution');
+      }
+      msg "Found something using the power of my mind.";
     }
     
     my Board_Solver $BS .= new($B);
@@ -159,10 +164,10 @@ class Player does Solutions {
       # by requiring something from the new one
       for $still_doable.list -> $r {
 	if (chance($!extend_solutions)) {  # make a parameter
-	  msg "Replacing $r; Board is \n {$B.display}" if debug;
+	  msg "Replacing $r; Board is \n {$B.display}" if debug 'turn_replacement';
 	  for $r.comb -> $cube {
 	    for find_replacement($B,BagHash.new($cube),rpn($r)) -> $new_rpn {
-	      msg "replacement for ($r) is ($new_rpn)" if debug;
+	      msg "replacement for ($r) is ($new_rpn)" if debug 'turn_replacement';
 	      my RPN $rep_rpn .=new($new_rpn);
 	      $still_doable.save($rep_rpn) if $BS.doable_solution($rep_rpn);  # make sure -- not sure we need the call to $BS
 	      self.save($rep_rpn);
@@ -201,6 +206,17 @@ class Player does Solutions {
       }
       msg $B.display if $not_doable.found;
       self.generate_solutions($B) unless $still_doable.found;
+
+      unless (self.found) {
+        msg "I had a solution, but now it's gone.  Thinking about this carefully...";
+        self.generate_solutions($B,max_cubes=>15,max_solutions=>100_000);
+        unless (self.found) {
+      	  msg "***I challenge -- I can't find any solution";
+          return Play.new(who=>$!name,type=>'Terminal',notes=>'Prior solution gone; cannot find new one.');
+        }
+        msg "Found something using the power of my mind.";
+      }
+
     }
 
     msg "{self.name} solutions before filtering: {self.rpn_list>>.display}" if debug 'monitor solutions';
@@ -214,7 +230,7 @@ class Player does Solutions {
     
     return self.crazy_move($B) if chance($!crazy_moves) and $B.U.elems > 1;    # non-thinking move -- has to be more than one cube left
 
-    unless (self.found) { return Play.new(who=>$!name,type=>'Terminal',notes=>"I'm stumped")  }
+    unless (self.found) { return Play.new(who=>$!name,type=>'Terminal',notes=>"I'm done")  }
 
     my Board_Solver $BS .= new($B);
 
